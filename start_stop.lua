@@ -141,6 +141,10 @@ function courseplay:start(self)
 	end;
 
 
+	local mapIconPath = Utils.getFilename('img/mapWaypoint.png', courseplay.path);
+	local mapIconHeight = 2 / 1080;
+	local mapIconWidth = mapIconHeight / g_screenAspectRatio;
+
 	local numWaitPoints = 0
 	local numCrossingPoints = 0
 	self.cp.waitPoints = {};
@@ -210,7 +214,10 @@ function courseplay:start(self)
 			end;
 			wp.laneNum = curLaneNumber;
 		end;
-	end;
+
+		-- ingame map course display
+		-- wp.ingameMapHotSpot = g_currentMission.ingameMap:createMapHotspot(nil, mapIconPath, wp.cx, wp.cz, mapIconWidth, mapIconHeight);
+	end; -- END for wp in self.Waypoints
 
 
 	-- modes 4/6 without start and stop point, set them at start and end, for only-on-field-courses
@@ -331,16 +338,29 @@ function courseplay:start(self)
 	self.cp.totalLength, self.cp.totalLengthOffset = courseplay:getTotalLengthOnWheels(self);
 
 	courseplay:validateCanSwitchMode(self);
+
+	-- add ingameMap icon
+	if courseplay.ingameMapIconActive then
+		courseplay:createMapHotspot(self);
+	end;
+
 	--print("startStop "..debug.getinfo(1).currentline)
 end;
 
 function courseplay:getCanUseAiMode(vehicle)
-	
-	if not vehicle.isMotorStarted then --or (vehicle.motorStartTime and vehicle.motorStartTime > vehicle.timer) then
-		return false;				   -- TODO (Tom) check vehicle.motorStartTime in scripts, its been up to 70sec !!!
+	if not vehicle.isMotorStarted or (vehicle.motorStartTime and vehicle.motorStartTime > g_currentMission.time) then
+		return false;
 	end;
-	
+
 	local mode = vehicle.cp.mode;
+
+	if (mode == 7 and not vehicle.cp.isCombine and not vehicle.cp.isChopper and not vehicle.cp.isHarvesterSteerable)
+	or ((mode == 1 or mode == 2 or mode == 3 or mode == 4 or mode == 8 or mode == 9) and (vehicle.cp.isCombine or vehicle.cp.isChopper or vehicle.cp.isHarvesterSteerable))
+	or ((mode ~= 5) and (vehicle.cp.isWoodHarvester or vehicle.cp.isWoodForwarder)) then
+		courseplay:setInfoText(vehicle, courseplay:loc('COURSEPLAY_MODE_NOT_SUPPORTED_FOR_VEHICLETYPE'));
+		return false;
+	end;
+
 
 	if mode ~= 5 and mode ~= 6 and mode ~= 7 and not vehicle.cp.workToolAttached then
 		courseplay:setInfoText(vehicle, courseplay:loc('COURSEPLAY_WRONG_TRAILER'));
@@ -366,6 +386,11 @@ function courseplay:getCanUseAiMode(vehicle)
 		elseif mode == 7 then
 			if vehicle.isAutoCombineActivated ~= nil and vehicle.isAutoCombineActivated then
 				courseplay:setInfoText(vehicle, courseplay:loc('COURSEPLAY_NO_AUTOCOMBINE_MODE_7'));
+				return false;
+			end;
+		elseif mode == 8 then
+			if vehicle.cp.workTools[1] == nil then
+				courseplay:setInfoText(vehicle, courseplay:loc('COURSEPLAY_WRONG_TRAILER'));
 				return false;
 			end;
 		end;
@@ -532,6 +557,11 @@ function courseplay:stop(self)
 			end;
 		end;
 	end
+
+	-- remove ingame map hotspot
+	if courseplay.ingameMapIconActive then
+		courseplay:deleteMapHotspot(self);
+	end;
 
 	--remove from activeCoursePlayers
 	courseplay:removeFromActiveCoursePlayers(self);

@@ -592,28 +592,28 @@ function courseplay.courses.delete_save_all(self)
 		if courseplay.cpXmlFilePath then
 			local file = io.open(courseplay.cpXmlFilePath, "w");
 			if file ~= nil then
-				file:write('<?xml version="1.0" encoding="utf-8" standalone="no" ?>\n<XML>\n');
-				file:write(string.format('\t<courseplayHud posX="%.3f" posY="%.3f" />\n', courseplay.hud.infoBasePosX, courseplay.hud.infoBasePosY));
-				file:write(string.format('\t<courseplayFields automaticScan=%q onlyScanOwnedFields=%q debugScannedFields=%q debugCustomLoadedFields=%q scanStep="%d" />\n', tostring(courseplay.fields.automaticScan), tostring(courseplay.fields.onlyScanOwnedFields), tostring(courseplay.fields.debugScannedFields), tostring(courseplay.fields.debugCustomLoadedFields), courseplay.fields.scanStep));
-				file:write(string.format('\t<courseplayWages active=%q wagePerHour="%d" />\n', tostring(courseplay.wagesActive), courseplay.wagePerHour));
+				-- header
+				local header = '';
+				header = header .. '<?xml version="1.0" encoding="utf-8" standalone="no" ?>\n<XML>\n';
+				header = header .. ('\t<courseplayHud posX="%.3f" posY="%.3f" />\n'):format(courseplay.hud.infoBasePosX, courseplay.hud.infoBasePosY);
+				header = header .. ('\t<courseplayFields automaticScan=%q onlyScanOwnedFields=%q debugScannedFields=%q debugCustomLoadedFields=%q scanStep="%d" />\n'):format(tostring(courseplay.fields.automaticScan), tostring(courseplay.fields.onlyScanOwnedFields), tostring(courseplay.fields.debugScannedFields), tostring(courseplay.fields.debugCustomLoadedFields), courseplay.fields.scanStep);
+				header = header .. ('\t<courseplayWages active=%q wagePerHour="%d" />\n'):format(tostring(courseplay.wagesActive), courseplay.wagePerHour);
+				header = header .. ('\t<courseplayIngameMap active=%q showName=%q showCourse=%q />\n'):format(tostring(courseplay.ingameMapIconActive), tostring(courseplay.ingameMapIconShowName),tostring(courseplay.ingameMapIconShowCourse));
+
+				file:write(header);
 
 				-- folders
-				file:write('\t<folders>\n')
+				local foldersTxt = '\t<folders>\n';
 				for i,folder in pairs(g_currentMission.cp_folders) do
-					file:write('\t\t<folder name="' .. folder.name .. '" id="' .. folder.id .. '" parent="' .. folder.parent ..'" />\n');
+					foldersTxt = foldersTxt .. '\t\t<folder name="' .. folder.name .. '" id="' .. folder.id .. '" parent="' .. folder.parent ..'" />\n';
 				end
-				file:write('\t</folders>\n');
+				foldersTxt = foldersTxt .. '\t</folders>\n';
+				file:write(foldersTxt);
 
-				-- course reference
-				--[[file:write('\t<courseReference>\n');
-				for i,course in pairs(g_currentMission.cp_courses) do
-					file:write(('\t\t<course name=%q id=%q numWaypoints=%q parent=%q'):format(tostring(course.name), tostring(course.id), tostring(#course.waypoints), tostring(course.parent)));
-				end;
-				file:write('\t</courseReference>\n');
-				]]
+				-- courses
 				file:write('\t<courses>\n')
 				for i,course in pairs(g_currentMission.cp_courses) do
-					file:write('\t\t<course name="' .. course.name .. '" id="' .. course.id .. '" numWaypoints="' .. #(course.waypoints) .. '" parent="' .. course.parent ..'">\n');
+					local courseTxt = '\t\t<course name="' .. course.name .. '" id="' .. course.id .. '" numWaypoints="' .. #(course.waypoints) .. '" parent="' .. course.parent ..'">\n';
 					for wpNum,wp in ipairs(course.waypoints) do
 						local wpContent = '\t\t\t<waypoint' .. wpNum .. ' ';
 						wpContent = wpContent .. 'pos="' .. tostring(Utils.getNoNil(courseplay:round(wp.cx, 4), 0)) .. ' ' .. tostring(Utils.getNoNil(courseplay:round(wp.cz, 4), 0)) .. '" ';
@@ -632,9 +632,11 @@ function courseplay.courses.delete_save_all(self)
 						wpContent = wpContent .. 'generated="' .. tostring(Utils.getNoNil(wp.generated, false)) .. '" ';
 						wpContent = wpContent .. '/>\n';
 
-						file:write(wpContent);
+						courseTxt = courseTxt .. wpContent;
 					end;
-					file:write('\t\t</course>\n');
+					courseTxt = courseTxt .. '\t\t</course>\n';
+
+					file:write(courseTxt);
 				end;
 				file:write('\t</courses>\n</XML>');
 				file:close();

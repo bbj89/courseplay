@@ -501,7 +501,7 @@ function courseplay.hud:loadPage(vehicle, page)
 
 		-- Open hud key
 		vehicle.cp.hud.content.pages[6][2][1].text = courseplay:loc('COURSEPLAY_OPEN_HUD_MODE');
-		vehicle.cp.hud.content.pages[6][2][2].text = vehicle.cp.hud.openWithMouse and courseplay.inputBindings.mouse.COURSEPLAY_MOUSEACTION_SECONDARY.displayName or courseplay.inputBindings.keyboard.COURSEPLAY_HUD_COMBINED.displayName;
+		vehicle.cp.hud.content.pages[6][2][2].text = vehicle.cp.hud.openWithMouse and courseplay.inputBindings.mouse.secondaryTextI18n or courseplay.inputBindings.keyboard.openCloseHudTextI18n;
 
 		-- Waypoint mode
 		vehicle.cp.hud.content.pages[6][3][1].text = courseplay:loc('COURSEPLAY_WAYPOINT_MODE');
@@ -525,8 +525,14 @@ function courseplay.hud:loadPage(vehicle, page)
 			vehicle.cp.hud.content.pages[6][5][2].text = str;
 		end;
 
+		-- Ingame map icon text
+		if courseplay.ingameMapIconActive and courseplay.ingameMapIconShowTextLoaded then
+			vehicle.cp.hud.content.pages[6][6][1].text = courseplay:loc('COURSEPLAY_INGAMEMAP_ICONS_SHOWTEXT');
+			vehicle.cp.hud.content.pages[6][6][2].text = courseplay.ingameMapIconShowText and courseplay:loc('COURSEPLAY_ACTIVATED') or courseplay:loc('COURSEPLAY_DEACTIVATED');
+		end;
+
 		-- Debug channels
-		vehicle.cp.hud.content.pages[6][6][1].text = courseplay:loc('COURSEPLAY_DEBUG_CHANNELS');
+		vehicle.cp.hud.content.pages[6][8][1].text = courseplay:loc('COURSEPLAY_DEBUG_CHANNELS');
 
 
 	--PAGE 7: DRIVING SETTINGS
@@ -588,20 +594,23 @@ function courseplay.hud:loadPage(vehicle, page)
 		end;
 
 
-	--PAGE 8: COURSE GENERATION
+	-- PAGE 8: COURSE GENERATION
 	elseif page == 8 then
-		--line 1 = CourseplayFields
-		vehicle.cp.hud.content.pages[8][1][1].text, vehicle.cp.hud.content.pages[8][1][2].text = '', '';
-		if courseplay.fields.numAvailableFields > 0 then
-			vehicle.cp.hud.content.pages[8][1][1].text = courseplay:loc('COURSEPLAY_FIELD_EDGE_PATH');
-			vehicle.cp.hud.content.pages[8][1][2].text = vehicle.cp.fieldEdge.selectedField.fieldNum > 0 and courseplay.fields.fieldData[vehicle.cp.fieldEdge.selectedField.fieldNum].name or '---';
+		-- line 1 = field edge path
+		vehicle.cp.hud.content.pages[8][1][1].text = courseplay:loc('COURSEPLAY_FIELD_EDGE_PATH');
+		if courseplay.fields.numAvailableFields > 0 and vehicle.cp.fieldEdge.selectedField.fieldNum > 0 then
+			vehicle.cp.hud.content.pages[8][1][2].text = courseplay.fields.fieldData[vehicle.cp.fieldEdge.selectedField.fieldNum].name;
+		elseif #vehicle.Waypoints >= 4 then
+			vehicle.cp.hud.content.pages[8][1][2].text = courseplay:loc('COURSEPLAY_CURRENTLY_LOADED_COURSE');
+		else
+			vehicle.cp.hud.content.pages[8][1][2].text = '---';
 		end;
 
-		--line 2 = work width
+		-- line 2 = work width
 		vehicle.cp.hud.content.pages[8][2][1].text = courseplay:loc('COURSEPLAY_WORK_WIDTH');
 		vehicle.cp.hud.content.pages[8][2][2].text = vehicle.cp.workWidth ~= nil and string.format('%.1fm', vehicle.cp.workWidth) or '---';
 
-		--line 3 = starting corner
+		-- line 3 = starting corner
 		vehicle.cp.hud.content.pages[8][3][1].text = courseplay:loc('COURSEPLAY_STARTING_CORNER');
 		-- 1 = SW, 2 = NW, 3 = NE, 4 = SE
 		if vehicle.cp.hasStartingCorner then
@@ -610,7 +619,7 @@ function courseplay.hud:loadPage(vehicle, page)
 			vehicle.cp.hud.content.pages[8][3][2].text = '---';
 		end;
 
-		--line 4 = starting direction
+		-- line 4 = starting direction
 		vehicle.cp.hud.content.pages[8][4][1].text = courseplay:loc('COURSEPLAY_STARTING_DIRECTION');
 		-- 1 = North, 2 = East, 3 = South, 4 = West
 		if vehicle.cp.hasStartingDirection then
@@ -619,16 +628,16 @@ function courseplay.hud:loadPage(vehicle, page)
 			vehicle.cp.hud.content.pages[8][4][2].text = '---';
 		end;
 
-		--line 5 = return to first point
+		-- line 5 = return to first point
 		vehicle.cp.hud.content.pages[8][5][1].text = courseplay:loc('COURSEPLAY_RETURN_TO_FIRST_POINT');
 		vehicle.cp.hud.content.pages[8][5][2].text = vehicle.cp.returnToFirstPoint and courseplay:loc('COURSEPLAY_ACTIVATED') or courseplay:loc('COURSEPLAY_DEACTIVATED');
 
-		--line 6 = headland
+		-- line 6 = headland
 		vehicle.cp.hud.content.pages[8][6][1].text = courseplay:loc('COURSEPLAY_HEADLAND');
 		vehicle.cp.hud.content.pages[8][6][2].text = vehicle.cp.headland.numLanes ~= 0 and tostring(vehicle.cp.headland.numLanes) or '-';
 
 
-	--PAGE 9: SHOVEL SETTINGS
+	-- PAGE 9: SHOVEL SETTINGS
 	elseif page == 9 then
 		vehicle.cp.hud.content.pages[9][1][1].text = courseplay:loc('COURSEPLAY_SHOVEL_LOADING_POSITION');
 		vehicle.cp.hud.content.pages[9][2][1].text = courseplay:loc('COURSEPLAY_SHOVEL_TRANSPORT_POSITION');
@@ -642,7 +651,7 @@ function courseplay.hud:loadPage(vehicle, page)
 		vehicle.cp.hud.content.pages[9][5][1].text = courseplay:loc('COURSEPLAY_SHOVEL_STOP_AND_GO');
 		vehicle.cp.hud.content.pages[9][5][2].text = vehicle.cp.shovelStopAndGo and courseplay:loc('COURSEPLAY_ACTIVATED') or courseplay:loc('COURSEPLAY_DEACTIVATED');
 
-	end; --END if page == n
+	end; -- END if page == n
 
 	courseplay.hud:setReloadPageOrder(vehicle, page, false);
 end;

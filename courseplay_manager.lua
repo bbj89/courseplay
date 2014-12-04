@@ -14,6 +14,9 @@ function courseplay_manager:loadMap(name)
 	end;
 
 	self.firstRun = true;
+	-- height for mouse text line in game's help menu
+	self.hudHelpMouseLineHeight = g_currentMission.hudHelpTextSize + g_currentMission.hudHelpTextLineSpacing*2;
+
 	self.showFieldScanYesNoDialogue = false;
 	self.showWagesYesNoDialogue = false;
 	self:createInitialCourseplayFile();
@@ -48,6 +51,7 @@ function courseplay_manager:loadMap(name)
 		y1 = git.backgroundPosY,
 		y2 = git.backgroundPosY + (self.globalInfoTextMaxNum  * (git.lineHeight + git.lineMargin));
 	};
+	self.globalInfoTextHasContent = false;
 
 	self.playerOnFootMouseEnabled = false;
 	self.wasPlayerFrozen = false;
@@ -101,40 +105,77 @@ function courseplay_manager:loadMap(name)
 end;
 
 -- Giants - very intelligently - deletes any mod file in the savegame folder when saving. And now we get it back!
-function courseplay_manager.getAutoBackupIndex(self)
+local function backupCpFiles(self)
 	if g_server == nil and g_dedicatedServerInfo == nil then return end;
 
-	-- save the backup index before saveSavegame() changes it
-	local savegameIndex = g_currentMission.missionInfo.savegameIndex;
-	local savegame = self.savegames[savegameIndex];
-	courseplay_manager.savegameAutoBackupIndex = savegame.autoBackupIndex;
-end;
-g_careerScreen.saveSavegame = Utils.prependedFunction(g_careerScreen.saveSavegame, courseplay_manager.getAutoBackupIndex);
+	if not fileExists(courseplay.cpXmlFilePath) then
+		-- ERROR: CP FILE DOESN'T EXIST
+		return;
+	end;
 
-function courseplay_manager.getThatFuckerBack(self)
+	-- backup CP files before saveSavegame() deletes them
+	local savegameIndex = g_currentMission.missionInfo.savegameIndex;
+	courseplay_manager.cpTempSaveFolderPath = getUserProfileAppPath() .. 'courseplayBackupSavegame' .. savegameIndex;
+	createFolder(courseplay_manager.cpTempSaveFolderPath);
+	-- print('create folder at ' .. courseplay_manager.cpTempSaveFolderPath);
+	courseplay_manager.cpFileBackupPath = courseplay_manager.cpTempSaveFolderPath .. '/courseplay.xml';
+	copyFile(courseplay.cpXmlFilePath, courseplay_manager.cpFileBackupPath, true);
+	-- print('copy cp file to backup folder: ' .. courseplay_manager.cpFileBackupPath);
+
+	if fileExists(courseplay.cpFieldsXmlFilePath) then
+		courseplay_manager.cpFieldsFileBackupPath = courseplay_manager.cpTempSaveFolderPath .. '/courseplayFields.xml';
+		copyFile(courseplay.cpFieldsXmlFilePath, courseplay_manager.cpFieldsFileBackupPath, true);
+		-- print('copy cp fields file to backup folder: ' .. courseplay_manager.cpFieldsFileBackupPath);
+	end;
+end;
+g_careerScreen.saveSavegame = Utils.prependedFunction(g_careerScreen.saveSavegame, backupCpFiles);
+
+local function getThatFuckerBack(self)
 	if g_server == nil and g_dedicatedServerInfo == nil then return end;
 
-	-- get savegame backup folder and copy courseplay.xml back to our savegame directory
+	if not courseplay_manager.cpFileBackupPath then return end;
+
 	local savegameIndex = g_currentMission.missionInfo.savegameIndex;
-	local savegame = self.savegames[savegameIndex];
-
-	local copyFromFolderPath = savegame:getSavegameAutoBackupBasePath() .. '/' .. savegame:getSavegameAutoBackupDirectory(savegame.savegameIndex, courseplay_manager.savegameAutoBackupIndex);
-	local backupCpFilePath = copyFromFolderPath .. '/courseplay.xml';
-	local backupCpFieldsFilePath = copyFromFolderPath .. '/courseplayFields.xml';
-
-	if fileExists(backupCpFilePath) then
-		copyFile(backupCpFilePath, courseplay.cpXmlFilePath, true);
-	else
-		-- TODO (Jakob): create file anew
+	local savegameFolderPath = g_currentMission.missionInfo.savegameDirectory or courseplay.savegameFolderPath;
+	if savegameFolderPath == nil then
+		savegameFolderPath = ('%ssavegame%d'):format(getUserProfileAppPath(), savegameIndex);
 	end;
-	if fileExists(backupCpFieldsFilePath) then
-		copyFile(backupCpFieldsFilePath, courseplay.cpFieldsXmlFilePath, true);
+
+	if fileExists(savegameFolderPath .. '/careerSavegame.xml') then -- savegame isn't corrupted and has been saved correctly
+		-- print('orig savegame folder still exists');
+
+		-- copy backed up files back to our savegame directory
+		-- print('copy backup cp file to orig savegame folder');
+		copyFile(courseplay_manager.cpFileBackupPath, courseplay.cpXmlFilePath, true);
+		courseplay_manager.cpFileBackupPath = nil;
+		if courseplay_manager.cpFieldsFileBackupPath then
+			-- print('copy backup cp fields file to orig savegame folder');
+			copyFile(courseplay_manager.cpFieldsFileBackupPath, courseplay.cpFieldsXmlFilePath, true);
+			courseplay_manager.cpFieldsFileBackupPath = nil;
+		end;
+
+		deleteFolder(courseplay_manager.cpTempSaveFolderPath);
+		-- print('delete backup folder');
+
+	else -- corrupt savegame: display backup info message
+		print(('This savegame has been corrupted. The Courseplay file has been backed up to %q'):format(courseplay_manager.cpTempSaveFolderPath));
+
+		local msgTitle = 'Courseplay';
+		local msgTxt = 'This savegame has been corrupted.';
+		if courseplay_manager.cpFieldsFileBackupPath then
+			msgTxt = msgTxt .. ('\nYour Courseplay files have been backed up to the %q directory.'):format('courseplayBackupSavegame' .. savegameIndex);
+		else
+			msgTxt = msgTxt .. ('\nYour Courseplay file has been backed up to the %q directory.'):format('courseplayBackupSavegame' .. savegameIndex);
+		end;
+		msgTxt = msgTxt .. ('\n\nFull path: %q'):format(courseplay_manager.cpTempSaveFolderPath);
+		g_currentMission.inGameMessage:showMessage(msgTitle, msgTxt, 15000, false);
 	end;
 end;
-g_careerScreen.saveSavegame = Utils.appendedFunction(g_careerScreen.saveSavegame, courseplay_manager.getThatFuckerBack);
+g_careerScreen.saveSavegame = Utils.appendedFunction(g_careerScreen.saveSavegame, getThatFuckerBack);
 
 function courseplay_manager:createInitialCourseplayFile()
 	if courseplay.cpXmlFilePath then
+		createFolder(courseplay.savegameFolderPath);
 		local file;
 		local created, changed = false, false;
 		if not fileExists(courseplay.cpXmlFilePath) then
@@ -160,6 +201,10 @@ function courseplay_manager:createInitialCourseplayFile()
 
 			{ tag = 'courseplayWages', attr = 'active', value = tostring(courseplay.wagesActive), get = 'Bool', set = 'String' };
 			{ tag = 'courseplayWages', attr = 'wagePerHour', value = courseplay.wagePerHour, get = 'Int', set = 'Int' };
+
+			{ tag = 'courseplayIngameMap', attr = 'active',		value = tostring(courseplay.ingameMapIconActive),	  get = 'Bool', set = 'String' };
+			{ tag = 'courseplayIngameMap', attr = 'showName',	value = tostring(courseplay.ingameMapIconShowName),	  get = 'Bool', set = 'String' };
+			{ tag = 'courseplayIngameMap', attr = 'showCourse',	value = tostring(courseplay.ingameMapIconShowCourse), get = 'Bool', set = 'String' };
 		};
 
 		for _,d in ipairs(data) do
@@ -233,6 +278,12 @@ function courseplay_manager:deleteMap()
 	courseplay.fields.seedUsageCalculator = {};
 	courseplay.fields.seedUsageCalculator.fieldsWithoutSeedData = {};
 
+	if courseplay.inputBindings.mouse.overlaySecondary then
+		courseplay.inputBindings.mouse.overlaySecondary:delete();
+		courseplay.inputBindings.mouse.overlaySecondary = nil;
+	end;
+
+
 	-- load/set global again on new map
 	courseplay.globalDataSet = false;
 end;
@@ -242,13 +293,13 @@ function courseplay_manager:draw()
 		return;
 	end;
 
-	courseplay.globalInfoText.hasContent = false;
+	self.globalInfoTextHasContent = false;
 	local git = courseplay.globalInfoText;
 	local line = 0;
 	local basePosY = courseplay.globalInfoText.backgroundPosY;
 	local ingameMap = g_currentMission.ingameMap;
-	if not (ingameMap.isVisible and ingameMap.isFullSize) and table.maxn(git.content) > 0 then
-		courseplay.globalInfoText.hasContent = true;
+	if not (ingameMap.isVisible and ingameMap:getIsFullSize()) and next(courseplay.globalInfoText.content) ~= nil then
+		self.globalInfoTextHasContent = true;
 		basePosY = ingameMap.isVisible and git.posYAboveMap or git.posY;
 		for _,refIndexes in pairs(git.content) do
 			if line >= self.globalInfoTextMaxNum then
@@ -343,6 +394,15 @@ function courseplay_manager:draw()
 		--reset font settings
 		courseplay:setFontSettings('white', true, 'left');
 	end;
+
+	-- HELP MENU
+	if g_currentMission.controlledVehicle == nil and not g_currentMission.player.currentTool then
+		if self.playerOnFootMouseEnabled then
+			g_currentMission:addHelpTextFunction(courseplay.drawMouseButtonHelp, courseplay, self.hudHelpMouseLineHeight, courseplay:loc('COURSEPLAY_MOUSEARROW_HIDE'));
+		elseif self.globalInfoTextHasContent then
+			g_currentMission:addHelpTextFunction(courseplay.drawMouseButtonHelp, courseplay, self.hudHelpMouseLineHeight, courseplay:loc('COURSEPLAY_MOUSEARROW_SHOW'));
+		end;
+	end;
 end;
 
 function courseplay_manager:getColorFromPct(pct, colorMap)
@@ -377,8 +437,8 @@ function courseplay_manager:mouseEvent(posX, posY, isDown, isUp, mouseKey)
 	end;
 
 	--LEFT CLICK
-	if (isDown or isUp) and mouseKey == courseplay.inputBindings.mouse.COURSEPLAY_MOUSEACTION.buttonId and courseplay:mouseIsInArea(posX, posY, area.x1, area.x2, area.y1, area.y2) then
-		if courseplay.globalInfoText.hasContent then
+	if (isDown or isUp) and mouseKey == courseplay.inputBindings.mouse.primaryButtonId and courseplay:mouseIsInArea(posX, posY, area.x1, area.x2, area.y1, area.y2) then
+		if self.globalInfoTextHasContent then
 			for i,button in pairs(self.buttons.globalInfoText) do
 				if button.show and button:getHasMouse(posX, posY) then
 					button:setClicked(isDown);
@@ -392,14 +452,14 @@ function courseplay_manager:mouseEvent(posX, posY, isDown, isUp, mouseKey)
 		end;
 
 	--RIGHT CLICK
-	elseif isDown and mouseKey == courseplay.inputBindings.mouse.COURSEPLAY_MOUSEACTION_SECONDARY.buttonId and g_currentMission.controlledVehicle == nil then
-		if courseplay.globalInfoText.hasContent and not self.playerOnFootMouseEnabled then
+	elseif isUp and mouseKey == courseplay.inputBindings.mouse.secondaryButtonId and g_currentMission.controlledVehicle == nil then
+		if self.globalInfoTextHasContent and not self.playerOnFootMouseEnabled and not g_currentMission.player.currentTool then
 			self.playerOnFootMouseEnabled = true;
 			self.wasPlayerFrozen = g_currentMission.isPlayerFrozen;
 			g_currentMission.isPlayerFrozen = true;
 		elseif self.playerOnFootMouseEnabled then
 			self.playerOnFootMouseEnabled = false;
-			if courseplay.globalInfoText.hasContent then --if a button was hovered when deactivating the cursor, deactivate hover state
+			if self.globalInfoTextHasContent then --if a button was hovered when deactivating the cursor, deactivate hover state
 				for _,button in pairs(self.buttons.globalInfoText) do
 					button:setClicked(false);
 					button:setHovered(false);
@@ -413,15 +473,11 @@ function courseplay_manager:mouseEvent(posX, posY, isDown, isUp, mouseKey)
 		InputBinding.setShowMouseCursor(self.playerOnFootMouseEnabled);
 
 	--HOVER
-	elseif not isDown and not isUp and courseplay.globalInfoText.hasContent --[[and posX > area.x1 * 0.9 and posX < area.x2 * 1.1 and posY > area.y1 * 0.9 and posY < area.y2 * 1.1]] then
+	elseif not isDown and not isUp and self.globalInfoTextHasContent then
 		for _,button in pairs(self.buttons.globalInfoText) do
 			button:setClicked(false);
 			if button.show and not button.isHidden then
-				button:setHovered(false);
-				if courseplay.button.getHasMouse(button, posX, posY) then
-					button:setClicked(false);
-					button:setHovered(true);
-				end;
+				button:setHovered(button:getHasMouse(posX, posY));
 			end;
 		end;
 	end;
@@ -478,14 +534,6 @@ function courseplay_manager:update(dt)
 		end;
 	end;
 	-- Field scan, wages yes/n dialogue - END -
-
-	if g_currentMission.controlledVehicle == nil then
-		if self.playerOnFootMouseEnabled then
-			g_currentMission:addExtraPrintText(courseplay.inputBindings.mouse.COURSEPLAY_MOUSEACTION_SECONDARY.displayName .. ": " .. courseplay:loc("COURSEPLAY_MOUSEARROW_HIDE"));
-		elseif courseplay.globalInfoText.hasContent then
-			g_currentMission:addExtraPrintText(courseplay.inputBindings.mouse.COURSEPLAY_MOUSEACTION_SECONDARY.displayName .. ": " .. courseplay:loc("COURSEPLAY_MOUSEARROW_SHOW"));
-		end;
-	end;
 
 	--SETUP FIELD INGAME DATA
 	if not courseplay.fields.ingameDataSetUp then
