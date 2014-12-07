@@ -45,8 +45,6 @@ function courseplay:load(xmlFile)
 	self.cp.noStopOnEdge = false --bool
 	self.cp.noStopOnTurn = false --bool
 
-	self.toggledTipState = 0;
-
 	self.cp.combineOffsetAutoMode = true
 	self.cp.isDriving = false;
 	self.cp.runOnceStartCourse = false;
@@ -56,7 +54,6 @@ function courseplay:load(xmlFile)
 	self.recordnumber = 1;
 	self.cp.lastRecordnumber = 1;
 	self.cp.recordingTimer = 1
-	self.cp.timeOut = 1
 	self.timer = 0.00
 	self.cp.timers = {}; 
 	self.cp.driveSlowTimer = 0;
@@ -76,7 +73,6 @@ function courseplay:load(xmlFile)
 
 	self.cp.visualWaypointsMode = 1
 	self.cp.beaconLightsMode = 1
-	self.cp.workWidthChanged = 0
 	-- saves the shortest distance to the next waypoint (for recocnizing circling)
 	self.cp.shortestDistToWp = nil
 
@@ -315,17 +311,15 @@ function courseplay:load(xmlFile)
 	self.cp.trailerFillDistance = nil;
 	self.cp.isUnloaded = false;
 	self.cp.isLoaded = false;
-	self.cp.unloadingTipper = nil;
 	self.cp.tipperFillLevel = nil;
 	self.cp.tipperCapacity = nil;
 	self.cp.tipperFillLevelPct = 0;
 	self.cp.prevFillLevelPct = nil;
 	self.cp.tipRefOffset = 0;
 	self.cp.isReverseBGATipping = nil; -- Used for reverse BGA tipping
-	self.cp.BGASelectedSection = nil; -- Used for reverse BGA tipping
-	self.cp.BGASectionInverted = false; -- Used for reverse BGA tipping
-	self.cp.rearTipRefPoint = nil; -- Used for reverse BGA tipping
-	self.cp.inversedRearTipNode = nil; -- Used for reverse BGA tipping
+	self.cp.isBGATipping = false; -- Used for BGA tipping
+	self.cp.BGASectionInverted = false; -- Used for BGA tipping
+	self.cp.inversedRearTipNode = nil; -- Used for BGA tipping
 	self.cp.tipperHasCover = false;
 	self.cp.tippersWithCovers = {};
 	self.cp.automaticCoverHandling = true;
@@ -731,11 +725,11 @@ function courseplay:load(xmlFile)
 	 -- TODO (Jakob): toolTips i18n
 	for i=1, courseplay.hud.numLines do
 		courseplay.button:new(self, -2, { 'iconSprite.png', 'navPlus' }, 'expandFolder', i, buttonX[0], courseplay.hud.linesButtonPosY[i], w16px, h16px, i, nil, false);
-		courseplay.button:new(self, -2, { 'iconSprite.png', 'courseLoadAppend' }, 'load_sorted_course', i, buttonX[1], courseplay.hud.linesButtonPosY[i], w16px, h16px, i, nil, false, false, false, 'Load course/merge into loaded course');
-		courseplay.button:new(self, -2, { 'iconSprite.png', 'courseAdd' }, 'add_sorted_course', i, buttonX[2], courseplay.hud.linesButtonPosY[i], w16px, h16px, i, nil, false, false, false, 'Append course at the end');
-		courseplay.button:new(self, -2, { 'iconSprite.png', 'folderParentFrom' }, 'link_parent', i, buttonX[3], courseplay.hud.linesButtonPosY[i], w16px, h16px, i, nil, false, false, false, 'Move to folder');
+		courseplay.button:new(self, -2, { 'iconSprite.png', 'courseLoadAppend' }, 'loadSortedCourse', i, buttonX[1], courseplay.hud.linesButtonPosY[i], w16px, h16px, i, nil, false, false, false, 'Load course/merge into loaded course');
+		courseplay.button:new(self, -2, { 'iconSprite.png', 'courseAdd' }, 'addSortedCourse', i, buttonX[2], courseplay.hud.linesButtonPosY[i], w16px, h16px, i, nil, false, false, false, 'Append course at the end');
+		courseplay.button:new(self, -2, { 'iconSprite.png', 'folderParentFrom' }, 'linkParent', i, buttonX[3], courseplay.hud.linesButtonPosY[i], w16px, h16px, i, nil, false, false, false, 'Move to folder');
 		if g_server ~= nil then
-			courseplay.button:new(self, -2, { 'iconSprite.png', 'delete' }, 'delete_sorted_item', i, buttonX[4], courseplay.hud.linesButtonPosY[i], w16px, h16px, i, nil, false, false, false, 'Delete course/folder');
+			courseplay.button:new(self, -2, { 'iconSprite.png', 'delete' }, 'deleteSortedItem', i, buttonX[4], courseplay.hud.linesButtonPosY[i], w16px, h16px, i, nil, false, false, false, 'Delete course/folder');
 		end;
 		courseplay.button:new(self, -2, nil, nil, nil, buttonX[1], courseplay.hud.linesButtonPosY[i], hoverAreaWidth, mouseWheelArea.h, i, nil, true, false);
 	end
@@ -814,9 +808,9 @@ function courseplay:load(xmlFile)
 	courseplay.button:new(self, 6, nil, 'changeVisualWaypointsMode', 1, courseplay.hud.infoBasePosX, courseplay.hud.linesPosY[3], courseplay.hud.visibleArea.width, 0.015, 3, nil, true);
 	courseplay.button:new(self, 6, nil, 'changeBeaconLightsMode', 1, courseplay.hud.infoBasePosX, courseplay.hud.linesPosY[4], courseplay.hud.visibleArea.width, 0.015, 4, nil, true);
 
-	courseplay.button:new(self, 6, { 'iconSprite.png', 'navMinus' }, 'changeWaitTime', -5, courseplay.hud.buttonPosX[1], courseplay.hud.linesButtonPosY[5], w16px, h16px, 5, -10, false);
-	courseplay.button:new(self, 6, { 'iconSprite.png', 'navPlus' },  'changeWaitTime',  5, courseplay.hud.buttonPosX[2], courseplay.hud.linesButtonPosY[5], w16px, h16px, 5,  10, false);
-	courseplay.button:new(self, 6, nil, 'changeWaitTime', 5, mouseWheelArea.x, courseplay.hud.linesButtonPosY[5], mouseWheelArea.w, mouseWheelArea.h, 5, 10, true, true);
+	courseplay.button:new(self, 6, { 'iconSprite.png', 'navMinus' }, 'changeWaitTime', -1, courseplay.hud.buttonPosX[1], courseplay.hud.linesButtonPosY[5], w16px, h16px, 5, -5, false);
+	courseplay.button:new(self, 6, { 'iconSprite.png', 'navPlus' },  'changeWaitTime',  1, courseplay.hud.buttonPosX[2], courseplay.hud.linesButtonPosY[5], w16px, h16px, 5,  5, false);
+	courseplay.button:new(self, 6, nil, 'changeWaitTime', 1, mouseWheelArea.x, courseplay.hud.linesButtonPosY[5], mouseWheelArea.w, mouseWheelArea.h, 5, 5, true, true);
 
 	if courseplay.ingameMapIconActive and courseplay.ingameMapIconShowTextLoaded then
 		courseplay.button:new(self, 6, nil, 'toggleIngameMapIconShowText', nil, courseplay.hud.infoBasePosX, courseplay.hud.linesPosY[6], courseplay.hud.visibleArea.width, 0.015, 7, nil, true);
@@ -976,8 +970,12 @@ function courseplay:draw()
 	local isDriving = self:getIsCourseplayDriving();
 
 	--WORKWIDTH DISPLAY
-	if self.cp.workWidthChanged > self.timer and self.cp.mode ~= 7 then
-		courseplay:showWorkWidth(self);
+	if self.cp.mode ~= 7 and self.cp.timers.showWorkWidth and self.cp.timers.showWorkWidth > 0 then
+		if courseplay:timerIsThrough(self, 'showWorkWidth') then -- stop showing, reset timer
+			courseplay:resetCustomTimer(self, 'showWorkWidth');
+		else -- timer running, show
+			courseplay:showWorkWidth(self);
+		end;
 	end;
 
 	--DEBUG SHOW DIRECTIONNODE
@@ -1157,7 +1155,7 @@ function courseplay:update(dt)
 		self.cp.doNotOnSaveClick = false
 	end
 	if self.cp.onMpSetCourses then
-		courseplay.courses.reload(self)
+		courseplay.courses:reloadVehicleCourses(self)
 		self.cp.onMpSetCourses = nil
 	end
 
@@ -1254,8 +1252,7 @@ function courseplay:updateTick(dt)
 		courseplay:reset_tools(self)
 	end
 
-	self.timer = self.timer + dt
-	--courseplay:debug(string.format("timer: %f", self.timer ), 2)
+	self.timer = self.timer + dt;
 end
 
 function courseplay:preDelete()
@@ -1308,13 +1305,12 @@ function courseplay:delete()
 	end;
 end;
 
-function courseplay:set_timeout(vehicle, interval)
-	vehicle.cp.timeOut = vehicle.timer + interval;
-end;
-
-function courseplay:setInfoText(vehicle, text)
+function courseplay:setInfoText(vehicle, text, seconds)
 	if vehicle.cp.infoText ~= text then
 		vehicle.cp.infoText = text;
+		if seconds then
+			courseplay:setCustomTimer(vehicle, 'infoText', seconds);
+		end;
 	end;
 end;
 
@@ -1440,19 +1436,14 @@ function courseplay:readStream(streamId, connection)
 		self.cp.currentTrailerToFill = networkGetObject(current_trailer_id)
 	end
 
-	local unloading_tipper_id = streamDebugReadInt32(streamId)
-	if unloading_tipper_id then
-		self.cp.unloadingTipper = networkGetObject(unloading_tipper_id)
-	end
-
-	CpManager:reinitializeCourses()
+	courseplay.courses:reinitializeCourses()
 
 
 	-- kurs daten
 	local courses = streamDebugReadString(streamId) -- 60.
 	if courses ~= nil then
 		self.cp.loadedCourses = Utils.splitString(",", courses);
-		courseplay:reload_courses(self, true)
+		courseplay:reloadCourses(self, true)
 	end
 
 	local debugChannelsString = streamDebugReadString(streamId)
@@ -1568,12 +1559,6 @@ function courseplay:writeStream(streamId, connection)
 	end
 	streamDebugWriteInt32(streamId, current_trailer_id)
 
-	local unloading_tipper_id;
-	if self.cp.unloadingTipper ~= nil then
-		unloading_tipper_id = networkGetObject(self.cp.unloadingTipper)
-	end
-	streamDebugWriteInt32(streamId, unloading_tipper_id)
-
 	local loadedCourses;
 	if #self.cp.loadedCourses then
 		loadedCourses = table.concat(self.cp.loadedCourses, ",")
@@ -1597,7 +1582,7 @@ function courseplay:loadFromAttributesAndNodes(xmlFile, key, resetVehicles)
 		self.cp.waitTime 		  = Utils.getNoNil(   getXMLInt(xmlFile, curKey .. '#waitTime'),		 0);
 		local courses 			  = Utils.getNoNil(getXMLString(xmlFile, curKey .. '#courses'),			 '');
 		self.cp.loadedCourses = Utils.splitString(",", courses);
-		courseplay:reload_courses(self, true);
+		courseplay:reloadCourses(self, true);
 		local visualWaypointsMode = Utils.getNoNil(   getXMLInt(xmlFile, curKey .. '#visualWaypoints'),	 1);
 		courseplay:changeVisualWaypointsMode(self, 0, visualWaypointsMode);
 		self.cp.multiSiloSelectedFillType = Fillable.fillTypeNameToInt[Utils.getNoNil(getXMLString(xmlFile, curKey .. '#multiSiloSelectedFillType'), 'unknown')];

@@ -4,7 +4,7 @@ local abs, max, min, pow, sin = math.abs, math.max, math.min, math.pow, math.sin
 
 -- drives recored course
 function courseplay:drive(self, dt)
-	if not courseplay:getCanUseAiMode(self) then
+	if not courseplay:getCanUseCpMode(self) then
 		return;
 	end;
 
@@ -1206,8 +1206,8 @@ function courseplay:setFourWheelDrive(vehicle, workArea)
 	local changed = false;
 
 	-- set 4WD
-	local awdOn = workArea or vehicle.cp.BGASelectedSection or vehicle.cp.slippingStage ~= 0 or vehicle.cp.mode == 9 or (vehicle.cp.mode == 2 and vehicle.cp.modeState > 1);
-	local awdOff = not workArea and not vehicle.cp.BGASelectedSection and vehicle.cp.slippingStage == 0 and vehicle.cp.mode ~= 9 and not (vehicle.cp.mode == 2 and vehicle.cp.modeState > 1);
+	local awdOn = workArea or vehicle.cp.isBGATipping or vehicle.cp.slippingStage ~= 0 or vehicle.cp.mode == 9 or (vehicle.cp.mode == 2 and vehicle.cp.modeState > 1);
+	local awdOff = not workArea and not vehicle.cp.isBGATipping and vehicle.cp.slippingStage == 0 and vehicle.cp.mode ~= 9 and not (vehicle.cp.mode == 2 and vehicle.cp.modeState > 1);
 	if awdOn and not vehicle.driveControl.fourWDandDifferentials.fourWheel then
 		courseplay:debug(('%s: set fourWheel to true'):format(nameNum(vehicle)), 14);
 		vehicle.driveControl.fourWDandDifferentials.fourWheel = true;

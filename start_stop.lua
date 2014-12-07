@@ -347,7 +347,8 @@ function courseplay:start(self)
 	--print("startStop "..debug.getinfo(1).currentline)
 end;
 
-function courseplay:getCanUseAiMode(vehicle)
+function courseplay:getCanUseCpMode(vehicle)
+	-- check engine state
 	if not vehicle.isMotorStarted or (vehicle.motorStartTime and vehicle.motorStartTime > g_currentMission.time) then
 		return false;
 	end;
