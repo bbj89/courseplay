@@ -1,4 +1,5 @@
 local curFile = 'settings.lua';
+local abs, max, min = math.abs, math.max, math.min;
 
 function courseplay:openCloseHud(vehicle, open)
 	courseplay:setMouseCursor(vehicle, open);
@@ -262,7 +263,7 @@ function courseplay:changeCombineOffset(vehicle, changeBy)
 
 	vehicle.cp.combineOffsetAutoMode = false;
 	vehicle.cp.combineOffset = courseplay:round(vehicle.cp.combineOffset, 1) + changeBy;
-	if math.abs(vehicle.cp.combineOffset) < 0.1 then
+	if abs(vehicle.cp.combineOffset) < 0.1 then
 		vehicle.cp.combineOffset = 0.0;
 		vehicle.cp.combineOffsetAutoMode = true;
 	end;
@@ -272,14 +273,14 @@ end
 
 function courseplay:changeTipperOffset(vehicle, changeBy)
 	vehicle.cp.tipperOffset = courseplay:round(vehicle.cp.tipperOffset, 1) + changeBy;
-	if math.abs(vehicle.cp.tipperOffset) < 0.1 then
+	if abs(vehicle.cp.tipperOffset) < 0.1 then
 		vehicle.cp.tipperOffset = 0;
 	end;
 end
 
 function courseplay:changeLaneOffset(vehicle, changeBy, force)
 	vehicle.cp.laneOffset = force or (courseplay:round(vehicle.cp.laneOffset, 1) + changeBy);
-	if math.abs(vehicle.cp.laneOffset) < 0.1 then
+	if abs(vehicle.cp.laneOffset) < 0.1 then
 		vehicle.cp.laneOffset = 0;
 	end;
 	vehicle.cp.totalOffsetX = vehicle.cp.laneOffset + vehicle.cp.toolOffsetX;
@@ -287,21 +288,20 @@ end;
 
 function courseplay:changeToolOffsetX(vehicle, changeBy, force, noDraw)
 	vehicle.cp.toolOffsetX = force or (courseplay:round(vehicle.cp.toolOffsetX, 1) + changeBy);
-	if math.abs(vehicle.cp.toolOffsetX) < 0.1 then
+	if abs(vehicle.cp.toolOffsetX) < 0.1 then
 		vehicle.cp.toolOffsetX = 0;
 	end;
 	vehicle.cp.totalOffsetX = vehicle.cp.laneOffset + vehicle.cp.toolOffsetX;
 
 	if noDraw == nil then noDraw = false; end;
 	if not noDraw and vehicle.cp.mode ~= 3 and vehicle.cp.mode ~= 7 then
-		courseplay:calculateWorkWidthDisplayPoints(vehicle);
 		courseplay:setCustomTimer(vehicle, 'showWorkWidth', 2);
 	end
 end;
 
 function courseplay:changeToolOffsetZ(vehicle, changeBy, force)
 	vehicle.cp.toolOffsetZ = force or (courseplay:round(vehicle.cp.toolOffsetZ, 1) + changeBy);
-	if math.abs(vehicle.cp.toolOffsetZ) < 0.1 then
+	if abs(vehicle.cp.toolOffsetZ) < 0.1 then
 		vehicle.cp.toolOffsetZ = 0;
 	end;
 end;
@@ -313,7 +313,6 @@ function courseplay:calculateWorkWidth(vehicle)
 	local vehL,vehR = courseplay:getCuttingAreaValuesX(vehicle);
 	courseplay:debug(('\tvehL=%s, vehR=%s'):format(tostring(vehL), tostring(vehR)), 7);
 
-	local min, max, abs = math.min, math.max, math.abs;
 	local implL,implR = -9999,9999;
 	if vehicle.attachedImplements then
 		for i,implement in pairs(vehicle.attachedImplements) do
@@ -420,7 +419,6 @@ function courseplay:getCuttingAreaValuesX(object)
 end;
 
 function courseplay:changeWorkWidth(vehicle, changeBy, force)
-	local abs, max = math.abs, math.max;
 	if force then
 		vehicle.cp.workWidth = max(courseplay:round(abs(force), 1), 0.1);
 	else
@@ -431,23 +429,14 @@ function courseplay:changeWorkWidth(vehicle, changeBy, force)
 				changeBy = 2 * Utils.sign(changeBy);
 			end;
 		end;
-		vehicle.cp.workWidth = max(vehicle.cp.workWidth + changeBy, 0.1);
-	end;
-	courseplay:calculateWorkWidthDisplayPoints(vehicle);
-	courseplay:setCustomTimer(vehicle, 'showWorkWidth', 2);
-end;
 
-function courseplay:calculateWorkWidthDisplayPoints(vehicle)
-	--calculate points for display
-	local x, y, z = getWorldTranslation(vehicle.rootNode)
-	local left =  (vehicle.cp.workWidth *  0.5) + (vehicle.cp.toolOffsetX or 0);
-	local right = (vehicle.cp.workWidth * -0.5) + (vehicle.cp.toolOffsetX or 0);
-	local pointLx, pointLy, pointLz = localToWorld(vehicle.rootNode, left,  1, -6);
-	local pointRx, pointRy, pointRz = localToWorld(vehicle.rootNode, right, 1, -6);
-	vehicle.cp.workWidthDisplayPoints = {
-		left =  { x = pointLx; y = pointLy, z = pointLz; };
-		right = { x = pointRx; y = pointRy, z = pointRz; };
-	};
+		if (vehicle.cp.workWidth < 10 and vehicle.cp.workWidth + changeBy > 10) or (vehicle.cp.workWidth > 10 and vehicle.cp.workWidth + changeBy < 10) then
+			vehicle.cp.workWidth = 10;
+		else
+			vehicle.cp.workWidth = max(vehicle.cp.workWidth + changeBy, 0.1);
+		end;
+	end;
+	courseplay:setCustomTimer(vehicle, 'showWorkWidth', 2);
 end;
 
 function courseplay:changeVisualWaypointsMode(vehicle, changeBy, force)
@@ -632,7 +621,7 @@ end;
 function courseplay:findDrivers(vehicle)
 	local foundDrivers = {}; -- resetting all drivers
 	for _,otherVehicle in pairs(g_currentMission.steerables) do
-		if otherVehicle.Waypoints ~= nil and otherVehicle.cp.hasCourseplaySpec  then
+		if otherVehicle.Waypoints ~= nil and otherVehicle.hasCourseplaySpec  then
 			if otherVehicle.rootNode ~= vehicle.rootNode and #(otherVehicle.Waypoints) > 0 then
 				table.insert(foundDrivers, otherVehicle);
 			end;
@@ -708,7 +697,7 @@ function courseplay.settings.add_folder(input1, input2)
 	if vehicle == false then
 	-- no vehicle given -> add folder to all vehicles
 		for k,v in pairs(g_currentMission.steerables) do
-			if v.cp ~= nil and v.cp.hasCourseplaySpec then 		-- alternative way to check if SpecializationUtil.hasSpecialization(courseplay, v.specializations)
+			if v.hasCourseplaySpec then -- alternative way to check if SpecializationUtil.hasSpecialization(courseplay, v.specializations)
 				v.cp.folder_settings[id] = {}
 				courseplay.settings.add_folder_settings(v.cp.folder_settings[id])
 			end	
@@ -726,7 +715,7 @@ function courseplay.settings.update_folders(vehicle)
 	if vehicle == nil then
 	-- no vehicle given -> update all folders in all vehicles
 		for k,v in pairs(g_currentMission.steerables) do
-			if v.cp ~= nil and v.cp.hasCourseplaySpec then 		-- alternative way to check if SpecializationUtil.hasSpecialization(courseplay, v.specializations)
+			if v.hasCourseplaySpec then -- alternative way to check if SpecializationUtil.hasSpecialization(courseplay, v.specializations)
 				old_settings = v.cp.folder_settings
 				v.cp.folder_settings = {}
 				for _,f in pairs(g_currentMission.cp_folders) do
@@ -762,7 +751,7 @@ function courseplay.settings.setReloadCourseItems(vehicle)
 		courseplay.hud:setReloadPageOrder(vehicle, 2, true);
 	else
 		for k,v in pairs(g_currentMission.steerables) do
-			if v.cp ~= nil and v.cp.hasCourseplaySpec then 		-- alternative way to check if SpecializationUtil.hasSpecialization(courseplay, v.specializations)
+			if v.hasCourseplaySpec then -- alternative way to check if SpecializationUtil.hasSpecialization(courseplay, v.specializations)
 				v.cp.reloadCourseItems = true
 				--print(string.format("courseplay.hud:setReloadPageOrder(%s, 2, true) TypeName: %s ;",tostring(v.name), v.typeName))
 				courseplay.hud:setReloadPageOrder(v, 2, true);
@@ -843,7 +832,7 @@ function courseplay.hud.reloadCourses(vehicle)
 		courseplay.hud.setCourses(vehicle, index)
 	else
 		for k,v in pairs(g_currentMission.steerables) do
-			if v.cp ~= nil and v.cp.hasCourseplaySpec then 		-- alternative way to check if SpecializationUtil.hasSpecialization(courseplay, v.specializations)
+			if v.hasCourseplaySpec then -- alternative way to check if SpecializationUtil.hasSpecialization(courseplay, v.specializations)
 				i = 1
 				-- course/folder in the hud might have been deleted -> info no longer available				
 				while i <= #v.cp.hud.courses and v.cp.sorted.info[ v.cp.hud.courses[i].uid ] == nil do
@@ -953,7 +942,7 @@ function courseplay.settings.validateCourseListArrows(vehicle)
 	else
 		-- update all vehicles
 		for k,v in pairs(g_currentMission.steerables) do
-			if v.cp ~= nil and v.cp.hasCourseplaySpec then 		-- alternative way to check if SpecializationUtil.hasSpecialization(courseplay, v.specializations)
+			if v.hasCourseplaySpec then -- alternative way to check if SpecializationUtil.hasSpecialization(courseplay, v.specializations)
 				prev = true
 				next = true
 				n_hudcourses = #(v.cp.hud.courses)
@@ -1515,12 +1504,12 @@ end;
 -- INGAME MAP ICONS
 function courseplay:createMapHotspot(vehicle)
 	local name = 'cpDriver';
-	if courseplay.ingameMapIconShowText then
+	if CpManager.ingameMapIconShowText then
 		name = '';
-		if courseplay.ingameMapIconShowName then
+		if CpManager.ingameMapIconShowName then
 			name = nameNum(vehicle, true) .. '\n';
 		end;
-		if courseplay.ingameMapIconShowCourse then
+		if CpManager.ingameMapIconShowCourse then
 			name = name .. ('(%s)'):format(vehicle.cp.currentCourseName or courseplay:loc('COURSEPLAY_TEMP_COURSE'));
 		end;
 	end;
@@ -1530,7 +1519,7 @@ function courseplay:createMapHotspot(vehicle)
 	local y = vehicle.components[1].lastTranslation[3];
 	local h = 24 / 1080;
 	local w = h / g_screenAspectRatio;
-	vehicle.cp.ingameMapHotSpot = g_currentMission.ingameMap:createMapHotspot(name, iconPath, x, y, w, h, false, false, courseplay.ingameMapIconShowText, vehicle.rootNode, false, true);
+	vehicle.cp.ingameMapHotSpot = g_currentMission.ingameMap:createMapHotspot(name, iconPath, x, y, w, h, false, false, CpManager.ingameMapIconShowText, vehicle.rootNode, false, true);
 end;
 function courseplay:deleteMapHotspot(vehicle)
 	if vehicle.cp.ingameMapHotSpot then
@@ -1539,7 +1528,7 @@ function courseplay:deleteMapHotspot(vehicle)
 	end;
 end;
 function courseplay:toggleIngameMapIconShowText()
-	courseplay.ingameMapIconShowText = not courseplay.ingameMapIconShowText;
+	CpManager.ingameMapIconShowText = not CpManager.ingameMapIconShowText;
 	-- for _,vehicle in pairs(g_currentMission.steerables) do
 	for _,vehicle in pairs(CpManager.activeCoursePlayers) do
 		if vehicle.cp.ingameMapHotSpot then
@@ -1548,6 +1537,10 @@ function courseplay:toggleIngameMapIconShowText()
 			courseplay.hud:setReloadPageOrder(vehicle, 7, true);
 		end;
 	end;
+end;
+
+function courseplay:toggleAlwaysUseFourWD(vehicle)
+	vehicle.cp.driveControl.alwaysUseFourWD = not vehicle.cp.driveControl.alwaysUseFourWD;
 end;
 
 ----------------------------------------------------------------------------------------------------

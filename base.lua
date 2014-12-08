@@ -14,7 +14,7 @@ function courseplay:load(xmlFile)
 	end;
 
 	if self.cp == nil then self.cp = {}; end;
-	self.cp.hasCourseplaySpec = true;
+	self.hasCourseplaySpec = true;
 
 	self.cp.varMemory = {};
 
@@ -587,6 +587,7 @@ function courseplay:load(xmlFile)
 	topIconsX[3] = listArrowX - w16px - w24px;
 	topIconsX[2] = topIconsX[3] - w16px - w24px;
 	topIconsX[1] = topIconsX[2] - w16px - w24px;
+	topIconsX[0] = topIconsX[1] - w16px - w24px;
 
 	-- Page nav
 	local pageNav = {
@@ -603,12 +604,12 @@ function courseplay:load(xmlFile)
 		if p == 2 then
 			toolTip = courseplay.hud.hudTitles[p][1];
 		end;
-		courseplay.button:new(self, 'global', 'iconSprite.png', 'setHudPage', p, posX, pageNav.posY, pageNav.buttonW, pageNav.buttonH, nil, nil, nil, false, false, toolTip);
+		courseplay.button:new(self, 'global', 'iconSprite.png', 'setHudPage', p, posX, pageNav.posY, pageNav.buttonW, pageNav.buttonH, nil, nil, false, false, false, toolTip);
 	end;
 
 	courseplay.button:new(self, 'global', { 'iconSprite.png', 'close' }, 'openCloseHud', false, courseplay.hud.buttonPosX[2], courseplay.hud.infoBasePosY + 0.255, w24px, h24px);
 
-	courseplay.button:new(self, 'global', { 'iconSprite.png', 'save' }, 'showSaveCourseForm', 'course', topIconsX[2], topIconsY, w24px, h24px);
+	courseplay.button:new(self, 'global', { 'iconSprite.png', 'save' }, 'showSaveCourseForm', 'course', topIconsX[3], topIconsY, w24px, h24px, nil, nil, false, false, false, courseplay:loc('COURSEPLAY_SAVE_CURRENT_COURSE'));
 
 	if CpManager.isDeveloper then
 		self.cp.toggleDrawWaypointsLinesButton = courseplay.button:new(self, 'global', { 'iconSprite.png', 'eye' }, 'toggleDrawWaypointsLines', nil, courseplay.hud.col1posX, topIconsY, w24px, h24px, nil, nil, false, false, true);
@@ -693,7 +694,10 @@ function courseplay:load(xmlFile)
 	courseplay.button:new(self, 1, nil, 'setCustomFieldEdgePathNumber', 1, mouseWheelArea.x, courseplay.hud.linesButtonPosY[4], mouseWheelArea.w, mouseWheelArea.h, 4, 5, true, true);
 
 	-- Find first waypoint
-	courseplay.button:new(self, 1, { 'iconSprite.png', 'search' }, 'toggleFindFirstWaypoint', nil, topIconsX[1], topIconsY, w24px, h24px, nil, nil, false, false, true);
+	courseplay.button:new(self, 1, { 'iconSprite.png', 'search' }, 'toggleFindFirstWaypoint', nil, topIconsX[1], topIconsY, w24px, h24px, nil, nil, false, false, true, courseplay:loc('COURSEPLAY_SEARCH_FOR_FIRST_WAYPOINT'));
+
+	-- Clear current course
+	self.cp.hud.clearCurrentCourseButton1 = courseplay.button:new(self, 1, { 'iconSprite.png', 'courseClear' }, 'clearCurrentLoadedCourse', nil, topIconsX[0], topIconsY, w24px, h24px, nil, nil, false, false, false, courseplay:loc('COURSEPLAY_CLEAR_COURSE'));
 
 
 	-- ##################################################
@@ -732,9 +736,10 @@ function courseplay:load(xmlFile)
 			courseplay.button:new(self, -2, { 'iconSprite.png', 'delete' }, 'deleteSortedItem', i, buttonX[4], courseplay.hud.linesButtonPosY[i], w16px, h16px, i, nil, false, false, false, 'Delete course/folder');
 		end;
 		courseplay.button:new(self, -2, nil, nil, nil, buttonX[1], courseplay.hud.linesButtonPosY[i], hoverAreaWidth, mouseWheelArea.h, i, nil, true, false);
-	end
-	self.cp.hud.filterButton = courseplay.button:new(self, 2, { 'iconSprite.png', 'search' }, 'showSaveCourseForm', 'filter', topIconsX[1], topIconsY, w24px, h24px, nil, nil, false, false, false, 'Search for courses and folders');
-	courseplay.button:new(self, 2, { 'iconSprite.png', 'folderNew' }, 'showSaveCourseForm', 'folder', topIconsX[3], topIconsY, w24px, h24px, nil, nil, false, false, false, 'Create new folder');
+	end;
+	self.cp.hud.clearCurrentCourseButton2 = courseplay.button:new(self, 2, { 'iconSprite.png', 'courseClear' }, 'clearCurrentLoadedCourse', nil, topIconsX[0], topIconsY, w24px, h24px, nil, nil, false, false, false, courseplay:loc('COURSEPLAY_CLEAR_COURSE'));
+	self.cp.hud.filterButton = courseplay.button:new(self, 2, { 'iconSprite.png', 'search' }, 'showSaveCourseForm', 'filter', topIconsX[1], topIconsY, w24px, h24px, nil, nil, false, false, false, courseplay:loc('COURSEPLAY_SEARCH_FOR_COURSES_AND_FOLDERS'));
+	courseplay.button:new(self, 2, { 'iconSprite.png', 'folderNew' }, 'showSaveCourseForm', 'folder', topIconsX[2], topIconsY, w24px, h24px, nil, nil, false, false, false, courseplay:loc('COURSEPLAY_CREATE_FOLDER'));
 
 
 	-- ##################################################
@@ -812,8 +817,8 @@ function courseplay:load(xmlFile)
 	courseplay.button:new(self, 6, { 'iconSprite.png', 'navPlus' },  'changeWaitTime',  1, courseplay.hud.buttonPosX[2], courseplay.hud.linesButtonPosY[5], w16px, h16px, 5,  5, false);
 	courseplay.button:new(self, 6, nil, 'changeWaitTime', 1, mouseWheelArea.x, courseplay.hud.linesButtonPosY[5], mouseWheelArea.w, mouseWheelArea.h, 5, 5, true, true);
 
-	if courseplay.ingameMapIconActive and courseplay.ingameMapIconShowTextLoaded then
-		courseplay.button:new(self, 6, nil, 'toggleIngameMapIconShowText', nil, courseplay.hud.infoBasePosX, courseplay.hud.linesPosY[6], courseplay.hud.visibleArea.width, 0.015, 7, nil, true);
+	if CpManager.ingameMapIconActive and CpManager.ingameMapIconShowTextLoaded then
+		courseplay.button:new(self, 6, nil, 'toggleIngameMapIconShowText', nil, courseplay.hud.infoBasePosX, courseplay.hud.linesPosY[6], courseplay.hud.visibleArea.width, 0.015, 6, nil, true);
 	end;
 
 	self.cp.hud.debugChannelButtons = {};
@@ -843,11 +848,12 @@ function courseplay:load(xmlFile)
 	courseplay.button:new(self, 7, { 'iconSprite.png', 'navUp' },   'changeToolOffsetZ',  0.1, courseplay.hud.buttonPosX[2], courseplay.hud.linesButtonPosY[4], w16px, h16px, 4,   0.5, false);
 	courseplay.button:new(self, 7, nil, 'changeToolOffsetZ', 0.1, mouseWheelArea.x, courseplay.hud.linesButtonPosY[4], mouseWheelArea.w, mouseWheelArea.h, 4, 0.5, true, true);
 
+	-- 4WD button in line 5: only added if driveControl and 4WD exist
 
-	courseplay.button:new(self, 7, { 'iconSprite.png', 'navUp' },   'switchDriverCopy', -1, courseplay.hud.buttonPosX[1], courseplay.hud.linesButtonPosY[5], w16px, h16px, 5, nil, false);
-	courseplay.button:new(self, 7, { 'iconSprite.png', 'navDown' }, 'switchDriverCopy',  1, courseplay.hud.buttonPosX[2], courseplay.hud.linesButtonPosY[5], w16px, h16px, 5, nil, false);
-	courseplay.button:new(self, 7, nil, nil, nil, courseplay.hud.buttonPosX[1], courseplay.hud.linesButtonPosY[5], 0.015 + w16px, mouseWheelArea.h, 5, nil, true, false);
-	courseplay.button:new(self, 7, { 'iconSprite.png', 'copy' }, 'copyCourse', nil, courseplay.hud.buttonPosX[2], courseplay.hud.linesButtonPosY[6], w16px, h16px);
+	courseplay.button:new(self, 7, { 'iconSprite.png', 'navUp' },   'switchDriverCopy', -1, courseplay.hud.buttonPosX[1], courseplay.hud.linesButtonPosY[7], w16px, h16px, 7, nil, false);
+	courseplay.button:new(self, 7, { 'iconSprite.png', 'navDown' }, 'switchDriverCopy',  1, courseplay.hud.buttonPosX[2], courseplay.hud.linesButtonPosY[7], w16px, h16px, 7, nil, false);
+	courseplay.button:new(self, 7, nil, nil, nil, courseplay.hud.buttonPosX[1], courseplay.hud.linesButtonPosY[7], 0.015 + w16px, mouseWheelArea.h, 7, nil, true, false);
+	courseplay.button:new(self, 7, { 'iconSprite.png', 'copy' }, 'copyCourse', nil, courseplay.hud.buttonPosX[2], courseplay.hud.linesButtonPosY[8], w16px, h16px);
 
 
 	-- ##################################################
@@ -882,7 +888,7 @@ function courseplay:load(xmlFile)
 
 	-- generation action button
 	local toolTip = 'Generate field course'; -- TODO: i18n
-	self.cp.hud.generateCourseButton = courseplay.button:new(self, 8, { 'iconSprite.png', 'generateCourse' }, 'generateCourse', nil, topIconsX[3], topIconsY, w24px, h24px, nil, nil, false, false, false, toolTip);
+	self.cp.hud.generateCourseButton = courseplay.button:new(self, 8, { 'iconSprite.png', 'generateCourse' }, 'generateCourse', nil, topIconsX[2], topIconsY, w24px, h24px, nil, nil, false, false, false, toolTip);
 
 
 	-- ##################################################
@@ -940,7 +946,13 @@ function courseplay:postLoad(xmlFile)
 			hasManualMotorStart = g_currentMission.driveControl.useModules.manMotorStart;
 			hasMotorKeepTurnedOn = g_currentMission.driveControl.useModules.manMotorKeepTurnedOn;
 			hasShuttleMode = g_currentMission.driveControl.useModules.shuttle;
+			alwaysUseFourWD = false;
 		};
+
+		-- add "always use 4WD" button
+		if self.cp.driveControl.hasFourWD then
+			courseplay.button:new(self, 7, nil, 'toggleAlwaysUseFourWD', nil, courseplay.hud.col1posX, courseplay.hud.linesPosY[5], courseplay.hud.visibleArea.width, 0.015, 5, nil, true);
+		end;
 	end;
 end;
 
@@ -1062,11 +1074,34 @@ function courseplay:draw()
 end; --END draw()
 
 function courseplay:showWorkWidth(vehicle)
-	local left =  vehicle.cp.workWidthDisplayPoints.left;
-	local right = vehicle.cp.workWidthDisplayPoints.right;
-	drawDebugPoint(left.x, left.y, left.z, 1, 1, 0, 1);
-	drawDebugPoint(right.x, right.y, right.z, 1, 1, 0, 1);
-	drawDebugLine(left.x, left.y, left.z, 1, 0, 0, right.x, right.y, right.z, 1, 0, 0);
+
+	local left =  (vehicle.cp.workWidth *  0.5) + (vehicle.cp.toolOffsetX or 0);
+	local right = (vehicle.cp.workWidth * -0.5) + (vehicle.cp.toolOffsetX or 0);
+
+	if vehicle.cp.DirectionNode and vehicle.cp.backMarkerOffset and vehicle.cp.aiFrontMarker then
+		local p1x, p1y, p1z = localToWorld(vehicle.cp.DirectionNode, left,  1.6, vehicle.cp.backMarkerOffset);
+		local p2x, p2y, p2z = localToWorld(vehicle.cp.DirectionNode, right, 1.6, vehicle.cp.backMarkerOffset);
+		local p3x, p3y, p3z = localToWorld(vehicle.cp.DirectionNode, right, 1.6, vehicle.cp.aiFrontMarker);
+		local p4x, p4y, p4z = localToWorld(vehicle.cp.DirectionNode, left,  1.6, vehicle.cp.aiFrontMarker);
+
+		drawDebugPoint(p1x, p1y, p1z, 1, 1, 0, 1);
+		drawDebugPoint(p2x, p2y, p2z, 1, 1, 0, 1);
+		drawDebugPoint(p3x, p3y, p3z, 1, 1, 0, 1);
+		drawDebugPoint(p4x, p4y, p4z, 1, 1, 0, 1);
+
+		drawDebugLine(p1x, p1y, p1z, 1, 0, 0, p2x, p2y, p2z, 1, 0, 0);
+		drawDebugLine(p2x, p2y, p2z, 1, 0, 0, p3x, p3y, p3z, 1, 0, 0);
+		drawDebugLine(p3x, p3y, p3z, 1, 0, 0, p4x, p4y, p4z, 1, 0, 0);
+		drawDebugLine(p4x, p4y, p4z, 1, 0, 0, p1x, p1y, p1z, 1, 0, 0);
+	else
+		local lX, lY, lZ = localToWorld(vehicle.rootNode, left,  1.6, -6);
+		local rX, rY, rZ = localToWorld(vehicle.rootNode, right, 1.6, -6);
+
+		drawDebugPoint(lX, lY, lZ, 1, 1, 0, 1);
+		drawDebugPoint(rX, rY, rZ, 1, 1, 0, 1);
+
+		drawDebugLine(lX, lY, lZ, 1, 0, 0, rX, rY, rZ, 1, 0, 0);
+	end;
 end;
 
 function courseplay:drawWaypointsLines(vehicle)

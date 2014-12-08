@@ -269,6 +269,7 @@ function courseplay:start(self)
 			self.cp.finishWork = self.cp.stopWork
 		end
 
+		-- NOTE: if we want to start the course but catch one of the last 5 points ("returnToStartPoint"), make sure we get wp 2
 		if self.cp.startAtPoint == courseplay.START_AT_NEAREST_POINT and self.cp.finishWork ~= self.cp.stopWork and self.recordnumber > self.cp.finishWork and self.recordnumber <= self.cp.stopWork then
 			courseplay:setRecordNumber(self, 2);
 		end
@@ -306,6 +307,10 @@ function courseplay:start(self)
 		local changed = false;
 		if self.cp.driveControl.hasFourWD then
 			self.cp.driveControl.fourWDBackup = self.driveControl.fourWDandDifferentials.fourWheel;
+			if self.cp.driveControl.alwaysUseFourWD and not self.driveControl.fourWDandDifferentials.fourWheel then
+				self.driveControl.fourWDandDifferentials.fourWheel = true;
+				changed = true;
+			end;
 		end;
 		if self.cp.driveControl.hasHandbrake then
 			if self.driveControl.handBrake.isActive == true then
@@ -340,7 +345,7 @@ function courseplay:start(self)
 	courseplay:validateCanSwitchMode(self);
 
 	-- add ingameMap icon
-	if courseplay.ingameMapIconActive then
+	if CpManager.ingameMapIconActive then
 		courseplay:createMapHotspot(self);
 	end;
 
@@ -558,7 +563,7 @@ function courseplay:stop(self)
 	end
 
 	-- remove ingame map hotspot
-	if courseplay.ingameMapIconActive then
+	if CpManager.ingameMapIconActive then
 		courseplay:deleteMapHotspot(self);
 	end;
 

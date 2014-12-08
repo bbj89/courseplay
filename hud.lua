@@ -105,8 +105,8 @@ function courseplay.hud:setup()
 			[6] = self.infoBasePosX + 0.182;
 		};
 		[7] = {
-			[5] = self.infoBasePosX + 0.105;
-			[6] = self.infoBasePosX + 0.105;
+			[7] = self.infoBasePosX + 0.105;
+			[8] = self.infoBasePosX + 0.105;
 		};
 		[8] = {
 			[6] = self.infoBasePosX + 0.265;
@@ -155,8 +155,9 @@ function courseplay.hud:setup()
 		cancel           = {  40,288,  72,256 };
 		close            = { 148,216, 180,184 };
 		copy             = { 184,180, 216,148 };
-		courseLoadAppend = {   4,252,  36,220 };
 		courseAdd        = {  40,252,  72,220 };
+		courseLoadAppend = {   4,252,  36,220 };
+		courseClear      = { 184,360, 216,328 };
 		eye              = { 148,180, 180,148 };
 		delete           = { 184,216, 216,184 };
 		folderNew        = { 220,216, 252,184 };
@@ -521,8 +522,6 @@ function courseplay.hud:loadPage(vehicle, page)
 					end;
 				end;
 
-				vehicle.cp.hud.content.pages[1][4][1].text = courseplay:loc('COURSEPLAY_RESET_COURSE')
-
 				if vehicle.cp.mode == 1 and vehicle.cp.workTools[1] ~= nil and vehicle.cp.workTools[1].allowFillFromAir and vehicle.cp.workTools[1].allowTipDischarge then
 					vehicle.cp.hud.content.pages[1][6][1].text = courseplay:loc('COURSEPLAY_FARM_SILO_FILL_TYPE');
 					vehicle.cp.hud.content.pages[1][6][2].text = Fillable.fillTypeIndexToDesc[vehicle.cp.multiSiloSelectedFillType].nameI18N;
@@ -758,9 +757,9 @@ function courseplay.hud:loadPage(vehicle, page)
 		end;
 
 		-- Ingame map icon text
-		if courseplay.ingameMapIconActive and courseplay.ingameMapIconShowTextLoaded then
+		if CpManager.ingameMapIconActive and CpManager.ingameMapIconShowTextLoaded then
 			vehicle.cp.hud.content.pages[6][6][1].text = courseplay:loc('COURSEPLAY_INGAMEMAP_ICONS_SHOWTEXT');
-			vehicle.cp.hud.content.pages[6][6][2].text = courseplay.ingameMapIconShowText and courseplay:loc('COURSEPLAY_ACTIVATED') or courseplay:loc('COURSEPLAY_DEACTIVATED');
+			vehicle.cp.hud.content.pages[6][6][2].text = CpManager.ingameMapIconShowText and courseplay:loc('COURSEPLAY_ACTIVATED') or courseplay:loc('COURSEPLAY_DEACTIVATED');
 		end;
 
 		-- Debug channels
@@ -815,14 +814,20 @@ function courseplay.hud:loadPage(vehicle, page)
 			end;
 		end;
 
+		-- Always use 4WD
+		if vehicle.cp.hasDriveControl and vehicle.cp.driveControl.hasFourWD then
+			vehicle.cp.hud.content.pages[7][5][1].text = courseplay:loc('COURSEPLAY_ALWAYS_USE_4WD');
+			vehicle.cp.hud.content.pages[7][5][2].text = vehicle.cp.driveControl.alwaysUseFourWD and courseplay:loc('COURSEPLAY_ACTIVATED') or courseplay:loc('COURSEPLAY_DEACTIVATED');
+		end;
+
 		--Copy course from driver
-		vehicle.cp.hud.content.pages[7][5][1].text = courseplay:loc('COURSEPLAY_COPY_COURSE');
+		vehicle.cp.hud.content.pages[7][7][1].text = courseplay:loc('COURSEPLAY_COPY_COURSE');
 		if vehicle.cp.copyCourseFromDriver ~= nil then
 			local driverName = vehicle.cp.copyCourseFromDriver.name or courseplay:loc('COURSEPLAY_VEHICLE');
-			vehicle.cp.hud.content.pages[7][5][2].text = string.format('%s (%dm)', driverName, courseplay:distanceToObject(vehicle, vehicle.cp.copyCourseFromDriver));
-			vehicle.cp.hud.content.pages[7][6][2].text = '(' .. (vehicle.cp.copyCourseFromDriver.cp.currentCourseName or courseplay:loc('COURSEPLAY_TEMP_COURSE')) .. ')';
+			vehicle.cp.hud.content.pages[7][7][2].text = string.format('%s (%dm)', driverName, courseplay:distanceToObject(vehicle, vehicle.cp.copyCourseFromDriver));
+			vehicle.cp.hud.content.pages[7][8][2].text = '(' .. (vehicle.cp.copyCourseFromDriver.cp.currentCourseName or courseplay:loc('COURSEPLAY_TEMP_COURSE')) .. ')';
 		else
-			vehicle.cp.hud.content.pages[7][5][2].text = courseplay:loc('COURSEPLAY_NONE');
+			vehicle.cp.hud.content.pages[7][7][2].text = courseplay:loc('COURSEPLAY_NONE');
 		end;
 
 
