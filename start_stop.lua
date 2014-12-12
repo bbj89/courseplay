@@ -276,7 +276,7 @@ function courseplay:start(self)
 		courseplay:debug(string.format("%s: maxnumber=%d, stopWork=%d, finishWork=%d, hasUnloadingRefillingCourse=%s, recordnumber=%d", nameNum(self), self.maxnumber, self.cp.stopWork, self.cp.finishWork, tostring(self.cp.hasUnloadingRefillingCourse), self.recordnumber), 12);
 	end
 
-	if self.cp.mode == 9 or self.cp.startAtPoint == courseplay.START_AT_FIRST_POINT then
+	if self.cp.mode == 9 then
 		courseplay:setRecordNumber(self, 1);
 		self.cp.shovelState = 1;
 		for i,_ in pairs(self.attachedImplements) do
@@ -291,7 +291,13 @@ function courseplay:start(self)
 					end
 				end
 			end				
-		end	
+		end
+	elseif self.cp.startAtPoint == courseplay.START_AT_FIRST_POINT then
+		if self.cp.mode == 2 or self.cp.mode == 3 then
+			courseplay:setRecordNumber(self, 3);
+		else
+			courseplay:setRecordNumber(self, 1);
+		end
 	end;
 
 	courseplay:updateAllTriggers();
@@ -368,8 +374,14 @@ function courseplay:getCanUseCpMode(vehicle)
 	end;
 
 
-	if mode ~= 5 and mode ~= 6 and mode ~= 7 and not vehicle.cp.workToolAttached then
-		courseplay:setInfoText(vehicle, courseplay:loc('COURSEPLAY_WRONG_TRAILER'));
+	if mode ~= 5 and mode ~= 7 and not vehicle.cp.workToolAttached then
+		if mode == 4 or mode == 6 then
+			courseplay:setInfoText(vehicle, courseplay:loc('COURSEPLAY_WRONG_TOOL'));
+		elseif mode == 9 then
+			courseplay:setInfoText(vehicle, courseplay:loc('COURSEPLAY_SHOVEL_NOT_FOUND'));
+		else
+			courseplay:setInfoText(vehicle, courseplay:loc('COURSEPLAY_WRONG_TRAILER'));
+		end;
 		return false;
 	end;
 

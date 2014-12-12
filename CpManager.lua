@@ -40,9 +40,9 @@ function CpManager:loadMap(name)
 
 	-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	-- SETUP (continued)
-	courseplay.hud:setup(); -- NOTE: hud has to be set up after the xml settings have been loaded, as almost all its values are based on infoBasePosX/Y
+	courseplay.hud:setup(); -- NOTE: hud has to be set up after the xml settings have been loaded, as almost all its values are based on basePosX/Y
 	self:setUpDebugChannels(); -- NOTE: debugChannels have to be set up after the hud, as they rely on some hud values [positioning]
-	self:setupGlobalInfoText(); -- NOTE: globalInfoText has to be set up after the hud, as they rely on some hud values [colors]
+	self:setupGlobalInfoText(); -- NOTE: globalInfoText has to be set up after the hud, as they rely on some hud values [colors, function]
 	courseplay.courses:setup(true); -- NOTE: courses:setup is called a second time, now we actually load the courses and folders from the XML
 
 	-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,10 +74,6 @@ function CpManager:loadMap(name)
 	if g_server ~= nil then
 		courseplay.fields:loadAllCustomFields();
 	end;
-
-	-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	-- WAGES
-	self.wageDifficultyMultiplier = Utils.lerp(0.5, 1, (g_currentMission.missionStats.difficulty - 1) / 2);
 
 	-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	-- TIMERS
@@ -176,12 +172,10 @@ function CpManager:deleteMap()
 	-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	-- delete fieldScanInfo overlays
 	if self.fieldScanInfo then
-		for _,ovl in ipairs( { 'bgOverlay', 'loadOverlay', 'progressBarBgOverlay', 'progressBarOverlay' } ) do
-			if self.fieldScanInfo[ovl] then
-				self.fieldScanInfo[ovl]:delete();
-				self.fieldScanInfo[ovl] = nil;
-			end;
-		end;
+		self.fieldScanInfo.bgOverlay:delete();
+		self.fieldScanInfo.bgOverlay = nil;
+		self.fieldScanInfo.progressBarOverlay:delete();
+		self.fieldScanInfo.progressBarOverlay = nil;
 	end;
 
 end;
@@ -218,7 +212,7 @@ function CpManager:update(dt)
 
 
 	-- REAL TIME 10 SECS CHANGER
-	if courseplay.wagesActive and g_server ~= nil then -- NOTE: if there are more items to be dealt with every 10 secs, remove the "wagesActive" restriction
+	if self.wagesActive and g_server ~= nil then -- NOTE: if there are more items to be dealt with every 10 secs, remove the "wagesActive" restriction
 		if self.realTime10SecsTimer < 10000 then
 			self.realTime10SecsTimer = self.realTime10SecsTimer + dt;
 		else
@@ -432,31 +426,36 @@ end;
 function CpManager:setupFieldScanInfo()
 	-- FIELD SCAN INFO DISPLAY
 	self.fieldScanInfo = {};
-	self.fieldScanInfo.fileW = 512/1080 / g_screenAspectRatio; --512/1920;
-	self.fieldScanInfo.fileH = 256/1080;
-	self.fieldScanInfo.contentW = 426/1080 / g_screenAspectRatio; --426/1920;
-	self.fieldScanInfo.contentH = 180/1080;
-	self.fieldScanInfo.bgX, self.fieldScanInfo.bgY = 0.5 - self.fieldScanInfo.contentW/2, 0.5 - self.fieldScanInfo.contentH/2;
-	local bgPath = Utils.getFilename('img/fieldScanInfoBackground.png', courseplay.path);
-	self.fieldScanInfo.bgOverlay = Overlay:new('fieldScanInfoBackground', bgPath, self.fieldScanInfo.bgX, self.fieldScanInfo.bgY, self.fieldScanInfo.fileW, self.fieldScanInfo.fileH);
-	local xPadding = 20/1080 / g_screenAspectRatio; --20/1920;
-	self.fieldScanInfo.lineX  = self.fieldScanInfo.bgX + xPadding;
-	self.fieldScanInfo.line1Y = self.fieldScanInfo.bgY + 67/1080;
-	self.fieldScanInfo.line2Y = self.fieldScanInfo.bgY + 40/1080;
-	self.fieldScanInfo.loadX  = self.fieldScanInfo.bgX + 340/1080 / g_screenAspectRatio; --340/1920;
-	self.fieldScanInfo.loadY  = self.fieldScanInfo.bgY + 57/1080;
 
-	local loadingPath = Utils.getFilename('img/fieldScanInfoLoading.png', courseplay.path);
-	self.fieldScanInfo.loadOverlay = Overlay:new('fieldScanInfoLoad', loadingPath, self.fieldScanInfo.loadX, self.fieldScanInfo.loadY, 32/1080 / g_screenAspectRatio, 32/1080);
-	self.fieldScanInfo.loadRotStep = 0;
-	self.fieldScanInfo.loadRotAdd = math.rad(-360/72); --rotate 5° to the right each step
-	self.fieldScanInfo.rotationTime = 1000/72; --in ms
+	local gfxPath = Utils.getFilename('img/fieldScanInfo.png', courseplay.path);
 
-	self.fieldScanInfo.progressBarWidth = self.fieldScanInfo.contentW - 2 * xPadding - 5/1920;
-	local progressBarBgPath = Utils.getFilename('img/progressBarBackground.png', courseplay.path);
-	self.fieldScanInfo.progressBarBgOverlay = Overlay:new('fieldScanInfoProgressBarBg', progressBarBgPath, self.fieldScanInfo.lineX, self.fieldScanInfo.bgY + 16/1080, self.fieldScanInfo.progressBarWidth, 16/1080);
-	local progressBarPath = Utils.getFilename('img/progressBar.png', courseplay.path);
-	self.fieldScanInfo.progressBarOverlay = Overlay:new('fieldScanInfoProgressBar', progressBarPath, self.fieldScanInfo.lineX, self.fieldScanInfo.bgY + 16/1080, self.fieldScanInfo.progressBarWidth, 16/1080);
+	self.fieldScanInfo.fileWidth  = 512;
+	self.fieldScanInfo.fileHeight = 256;
+
+	local bgUVs = { 41,210, 471,10 };
+	local bgW = courseplay.hud:pxToNormal(bgUVs[3] - bgUVs[1], 'x');
+	local bgH = courseplay.hud:pxToNormal(bgUVs[2] - bgUVs[4], 'y');
+	local bgX = 0.5 - bgW * 0.5;
+	local bgY = 0.5 - bgH * 0.5;
+	self.fieldScanInfo.bgOverlay = Overlay:new('fieldScanInfoBackground', gfxPath, bgX, bgY, bgW, bgH);
+	courseplay.utils:setOverlayUVsPx(self.fieldScanInfo.bgOverlay, bgUVs, self.fieldScanInfo.fileWidth, self.fieldScanInfo.fileHeight);
+
+	self.fieldScanInfo.textPosX  = bgX + courseplay.hud:pxToNormal(10, 'x');
+	self.fieldScanInfo.textPosY  = bgY + courseplay.hud:pxToNormal(55, 'y');
+	self.fieldScanInfo.titlePosY = bgY + courseplay.hud:pxToNormal(88, 'y');
+	self.fieldScanInfo.titleFontSize = courseplay.hud:pxToNormal(22, 'y');
+	self.fieldScanInfo.textFontSize  = courseplay.hud:pxToNormal(16, 'y');
+
+
+	self.fieldScanInfo.progressBarMaxWidthPx = 406;
+	self.fieldScanInfo.progressBarMaxWidth = courseplay.hud:pxToNormal(406, 'x');
+	local pbH = courseplay.hud:pxToNormal(26, 'y');
+	self.fieldScanInfo.progressBarUVs = { 53,246, 459,220 };
+	local pbX = bgX + courseplay.hud:pxToNormal(12, 'x');
+	local pbY = bgY + courseplay.hud:pxToNormal(12, 'y');
+	self.fieldScanInfo.progressBarOverlay = Overlay:new('fieldScanInfoProgressBar', gfxPath, pbX, pbY, self.fieldScanInfo.progressBarMaxWidth, pbH);
+	courseplay.utils:setOverlayUVsPx(self.fieldScanInfo.progressBarOverlay, self.fieldScanInfo.progressBarUVs, self.fieldScanInfo.fileWidth, self.fieldScanInfo.fileHeight);
+
 	self.fieldScanInfo.percentColors = {
 		{ pct = 0.0, color = { 225/255,  27/255, 0/255 } },
 		{ pct = 0.5, color = { 255/255, 204/255, 0/255 } },
@@ -467,35 +466,31 @@ end;
 function CpManager:renderFieldScanInfo()
 	local fsi = self.fieldScanInfo;
 
-	fsi.progressBarBgOverlay:render();
-	local pct = courseplay.fields.curFieldScanIndex / g_currentMission.fieldDefinitionBase.numberOfFields;
-	local r, g, b = courseplay.utils:getColorFromPct(pct, fsi.percentColors);
-	fsi.progressBarOverlay:setColor(r, g, b, 1);
-	fsi.progressBarOverlay.width = fsi.progressBarWidth * pct;
-	setOverlayUVs(fsi.progressBarOverlay.overlayId, 0,0, 0,1, pct,0, pct,1);
-	fsi.progressBarOverlay:render();
-
 	fsi.bgOverlay:render();
 
+	local pct = courseplay.fields.curFieldScanIndex / g_currentMission.fieldDefinitionBase.numberOfFields;
+
+	local r, g, b = courseplay.utils:getColorFromPct(pct, fsi.percentColors);
+	fsi.progressBarOverlay:setColor(r, g, b, 1);
+
+	fsi.progressBarOverlay.width = fsi.progressBarMaxWidth * pct;
+	local widthPx = courseplay:round(fsi.progressBarMaxWidthPx * pct);
+	local newUVs = { fsi.progressBarUVs[1], fsi.progressBarUVs[2], fsi.progressBarUVs[1] + widthPx, fsi.progressBarUVs[4] };
+	courseplay.utils:setOverlayUVsPx(fsi.progressBarOverlay, newUVs, fsi.fileWidth, fsi.fileHeight);
+	fsi.progressBarOverlay:render();
+
 	courseplay:setFontSettings({ 0.8, 0.8, 0.8, 1 }, true, 'left');
-	renderText(fsi.lineX, fsi.line1Y - 0.001, courseplay.hud.fontSizes.fieldScanTitle, courseplay:loc('COURSEPLAY_FIELD_SCAN_IN_PROGRESS'));
+	renderText(fsi.textPosX, fsi.titlePosY - 0.001, fsi.titleFontSize, courseplay:loc('COURSEPLAY_FIELD_SCAN_IN_PROGRESS'));
 	courseplay:setFontSettings('shadow', true);
-	renderText(fsi.lineX, fsi.line1Y,         courseplay.hud.fontSizes.fieldScanTitle, courseplay:loc('COURSEPLAY_FIELD_SCAN_IN_PROGRESS'));
+	renderText(fsi.textPosX, fsi.titlePosY,         fsi.titleFontSize, courseplay:loc('COURSEPLAY_FIELD_SCAN_IN_PROGRESS'));
 
-	local str2 = courseplay:loc('COURSEPLAY_SCANNING_FIELD_NMB'):format(courseplay.fields.curFieldScanIndex, g_currentMission.fieldDefinitionBase.numberOfFields);
+	local text = courseplay:loc('COURSEPLAY_SCANNING_FIELD_NMB'):format(courseplay.fields.curFieldScanIndex, g_currentMission.fieldDefinitionBase.numberOfFields);
 	courseplay:setFontSettings({ 0.8, 0.8, 0.8, 1 }, false);
-	renderText(fsi.lineX, fsi.line2Y - 0.001, courseplay.hud.fontSizes.fieldScanData, str2);
+	renderText(fsi.textPosX, fsi.textPosY - 0.001, fsi.textFontSize, text);
 	courseplay:setFontSettings('shadow', false);
-	renderText(fsi.lineX, fsi.line2Y,         courseplay.hud.fontSizes.fieldScanData, str2);
+	renderText(fsi.textPosX, fsi.textPosY,         fsi.textFontSize, text);
 
-	local rotationStep = math.floor(g_currentMission.time / self.fieldScanInfo.rotationTime);
-	if rotationStep > fsi.loadRotStep then
-		fsi.loadOverlay:setRotation(rotationStep * fsi.loadRotAdd, fsi.loadOverlay.width/2, fsi.loadOverlay.height/2);
-		fsi.loadRotStep = rotationStep;
-	end;
-	fsi.loadOverlay:render();
-
-	--reset font settings
+	-- reset font settings
 	courseplay:setFontSettings('white', true);
 end;
 
@@ -607,6 +602,7 @@ end;
 -- ####################################################################################################
 -- WAGES
 function CpManager:setupWages()
+	self.wageDifficultyMultiplier = Utils.lerp(0.5, 1, (g_currentMission.missionStats.difficulty - 1) / 2);
 	self.wagesActive = true;
 	self.wagePerHour = 1500;
 	self.wagePer10Secs  = self.wagePerHour / 360;
@@ -645,7 +641,7 @@ function CpManager:setupGlobalInfoText()
 
 	self.globalInfoText.posY = 0.01238; -- = ingameMap posY
 	self.globalInfoText.posYAboveMap = self.globalInfoText.posY + 0.027777777777778 + 0.20833333333333;
-	self.globalInfoText.fontSize = 0.016;
+	self.globalInfoText.fontSize = courseplay.hud:pxToNormal(18, 'y');
 	self.globalInfoText.lineHeight = self.globalInfoText.fontSize * 1.2;
 	self.globalInfoText.lineMargin = self.globalInfoText.lineHeight * 0.2;
 	self.globalInfoText.buttonHeight = self.globalInfoText.lineHeight;
@@ -840,14 +836,14 @@ function CpManager:loadOrSetXmlSettings()
 		local key = 'XML.courseplayHud';
 		local posX, posY = getXMLFloat(cpFile, key .. '#posX'), getXMLFloat(cpFile, key .. '#posY');
 		if posX then
-			courseplay.hud.infoBasePosX = posX;
+			courseplay.hud.basePosX = courseplay.hud:getFullPx(posX, 'x');
 		else
-			setXMLFloat(cpFile, key .. '#posX', courseplay.hud.infoBasePosX);
+			setXMLFloat(cpFile, key .. '#posX', courseplay.hud.basePosX);
 		end;
 		if posY then
-			courseplay.hud.infoBasePosY = posY;
+			courseplay.hud.basePosY = courseplay.hud:getFullPx(posY, 'y');
 		else
-			setXMLFloat(cpFile, key .. '#posY', courseplay.hud.infoBasePosY);
+			setXMLFloat(cpFile, key .. '#posY', courseplay.hud.basePosY);
 		end;
 
 
@@ -948,8 +944,8 @@ function CpManager:createXmlSettings()
 
 	-- hud position
 	local key = 'XML.courseplayHud';
-	setXMLFloat(cpFile, key .. '#posX', courseplay.hud.infoBasePosX);
-	setXMLFloat(cpFile, key .. '#posY', courseplay.hud.infoBasePosY);
+	setXMLFloat(cpFile, key .. '#posX', courseplay.hud.basePosX);
+	setXMLFloat(cpFile, key .. '#posY', courseplay.hud.basePosY);
 
 	-- fields settings
 	self.showFieldScanYesNoDialogue = true;
