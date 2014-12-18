@@ -25,11 +25,14 @@ function courseplay:cpOnTrafficCollisionTrigger(triggerId, otherId, onEnter, onL
 		else
 			local vehicleOnList = false
 			local OtherIdisCloser = true
-
+			local debugMessage = "onEnter"
+			if onLeave then 
+				debugMessage = "onLeave"
+			end
 			-- is this a traffic vehicle?
 			local cm = getCollisionMask(otherId);
 			if bitAND(cm, 33554432) ~= 0 then -- if bit25 is part of the collisionMask
-				-- is traffic vehicle
+				--print("is traffic vehicle")
 			end;
 
 			local vehicle = g_currentMission.nodeToVehicle[otherId];
@@ -41,14 +44,20 @@ function courseplay:cpOnTrafficCollisionTrigger(triggerId, otherId, onEnter, onL
 					isInOtherTrigger = true
 				end
 			end
-			courseplay:debug(string.format("%s: Trigger%d: triggered collision with %d ", nameNum(self),TriggerNumber,otherId), 3);
+			courseplay:debug(string.format("%s:%s Trigger%d: triggered collision with %d ", nameNum(self),debugMessage,TriggerNumber,otherId), 3);
 			local trafficLightDistance = 0 
+			
 			if collisionVehicle ~= nil and collisionVehicle.rootNode == nil then
 				local x,y,z = getWorldTranslation(self.cp.collidingVehicleId)
 				_,_, trafficLightDistance = worldToLocal (self.cp.DirectionNode, x,y,z)
 			end
-			
-			
+			if vehicle ~= nil and vehicle.rootNode == nil then --check traffic lights: stop or go?
+				local _,transY,_ = getTranslation(otherId);
+				if transY < 0 then
+					OtherIdisCloser = false
+					courseplay:debug(tostring(otherId)..": trafficLight: transY = "..tostring(transY)..", so it's green or Off-> go on",3)
+				end
+			end
 			local fixDistance = 0 -- if ID.rootNode is nil set, distance fix to 25m needed for traffic lights
 			if onEnter and vehicle ~= nil and vehicle.rootNode == nil then
 				fixDistance = TriggerNumber * 5
@@ -111,7 +120,6 @@ function courseplay:cpOnTrafficCollisionTrigger(triggerId, otherId, onEnter, onL
 					courseplay:debug(string.format("%s: 	onLeave: %d is in other trigger -> ignore", nameNum(self),otherId), 3);
 				end
 			end
-			
 			if vehicle ~= nil and self.trafficCollisionIgnoreList[otherId] == nil and vehicleOnList == false then
 				if onEnter and OtherIdisCloser and not self.cp.collidingObjects.all[otherId] then
 					self.cp.collidingObjects.all[otherId] = true
@@ -275,8 +283,9 @@ function courseplay:findTipTriggerCallback(transformId, x, y, z, distance)
 					end;
 
 					if fillTypeIsValid then
-						courseplay:debug(string.format("%s: self.cp.currentTipTrigger = %s", nameNum(self), tostring(triggerId)), 1);
 						self.cp.currentTipTrigger = trigger;
+						self.cp.currentTipTrigger.cpActualLength = courseplay:distanceToObject(self, trigger)*2 
+						courseplay:debug(string.format("%s: self.cp.currentTipTrigger = %s , cpActualLength = %s", nameNum(self), tostring(triggerId),tostring(self.cp.currentTipTrigger.cpActualLength)), 1);
 						return false
 					end;
 				elseif trigger.acceptedFillTypes ~= nil then
@@ -323,6 +332,7 @@ function courseplay:findSpecialTriggerCallback(transformId, x, y, z, distance)
 
 		if trigger.isWeightStation and courseplay:canUseWeightStation(self) then
 			self.cp.fillTrigger = transformId;
+			courseplay:debug(('%s: trigger %s is valid'):format(nameNum(self), tostring(transformId)), 19);
 		elseif self.cp.mode == 4 then
 			if trigger.isSowingMachineFillTrigger and not self.cp.hasSowingMachine then
 				return true;
@@ -330,10 +340,23 @@ function courseplay:findSpecialTriggerCallback(transformId, x, y, z, distance)
 				return true;
 			end;
 			self.cp.fillTrigger = transformId;
+			courseplay:debug(('%s: trigger %s is valid'):format(nameNum(self), tostring(transformId)), 19);
 		elseif self.cp.mode == 8 and (trigger.isSprayerFillTrigger or trigger.isLiquidManureFillTrigger or trigger.isSchweinemastLiquidManureTrigger) then
-			self.cp.fillTrigger = transformId;
+			if trigger.parentVehicle then
+				local tractor = trigger.parentVehicle:getRootAttacherVehicle()
+				if not (tractor and tractor.hasCourseplaySpec and tractor.cp.mode == 8 and tractor.cp.isDriving) then
+					self.cp.fillTrigger = transformId;
+					courseplay:debug(('%s: trigger %s is valid'):format(nameNum(self), tostring(transformId)), 19);
+				else
+					courseplay:debug(('%s: trigger %s is running mode8 -> refuse'):format(nameNum(self), tostring(transformId)), 19);
+				end
+			else
+				self.cp.fillTrigger = transformId;
+				courseplay:debug(('%s: trigger %s is valid'):format(nameNum(self), tostring(transformId)), 19);
+			end
 		elseif trigger.isGasStationTrigger or trigger.isDamageModTrigger then
 			self.cp.fillTrigger = transformId;
+			courseplay:debug(('%s: trigger %s is valid'):format(nameNum(self), tostring(transformId)), 19);
 		end;
 		return true;
 	end;
@@ -556,6 +579,16 @@ function courseplay:updateAllTriggers()
 				t.isLiquidManureFillTrigger = true;
 				t.isCowsLiquidManureFillTrigger = true;
 				courseplay:cpAddTrigger(triggerId, t, 'liquidManure', 'nonUpdateable');
+
+				-- check corresponding feeding tipTriggers
+				if t.fillLevelObject and t.fillLevelObject.tipTriggers then
+					for i,subTrigger in pairs(t.fillLevelObject.tipTriggers) do
+						local triggerId = subTrigger.triggerId;
+						if triggerId and subTrigger.acceptedFillTypes then
+							courseplay:cpAddTrigger(triggerId, subTrigger, 'tipTrigger');
+						end;
+					end;
+				end;
 			-- Regular and Extended tipTriggers
 			elseif courseplay:isValidTipTrigger(trigger) then
 				local triggerId = trigger.triggerId;
@@ -576,6 +609,7 @@ function courseplay:updateAllTriggers()
 			local triggerId = trigger.triggerId
 			trigger.isLiquidManureFillTrigger = true;
 			trigger.isLiquidManureOverloaderFillTrigger = true;
+			trigger.parentVehicle = vehicle
 			courseplay:cpAddTrigger(triggerId, trigger, 'liquidManure', 'nonUpdateable');
 		end
 	end
@@ -585,6 +619,8 @@ end;
 function courseplay:cpAddTrigger(triggerId, trigger, triggerType, groupType)
 	--courseplay:debug(('%s: courseplay:cpAddTrigger: TriggerId: %s,trigger: %s, triggerType: %s,groupType: %s'):format(nameNum(self), tostring(triggerId), tostring(trigger), tostring(triggerType), tostring(groupType)), 1);
 	local t = courseplay.triggers;
+	if t.all[triggerId] ~= nil then return; end;
+
 	t.all[triggerId] = trigger;
 	t.allCount = t.allCount + 1;
 

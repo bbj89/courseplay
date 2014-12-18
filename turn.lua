@@ -251,8 +251,8 @@ function courseplay:turn(self, dt) --!!!
 	if updateWheels then
 		local allowedToDrive = true
 		local refSpeed = self.cp.speeds.turn
-		
-		courseplay:setSpeed(self, refSpeed, 1)
+		self.cp.speedDebugLine = ("turn("..tostring(debug.getinfo(1).currentline-1).."): refSpeed = "..tostring(refSpeed))
+		courseplay:setSpeed(self, refSpeed )
 		
 		local lx, lz = AIVehicleUtil.getDriveDirection(self.cp.DirectionNode, newTargetX, newTargetY, newTargetZ);
 		if self.cp.turnStage == 3 and math.abs(lx) < 0.1 then
@@ -260,26 +260,14 @@ function courseplay:turn(self, dt) --!!!
 			moveForwards = true;
 		end;
 		if self.cp.TrafficBrake then
-			if self.isRealistic then
-				allowedToDrive = false
-			else
-				moveForwards = false;
-				lx = 0
-				lz = 1
-			end
+			moveForwards = self.movingDirection == -1;
+			lx = 0
+			lz = 1
 		end
 		if self.invertedDrivingDirection then
 			lx = -lx
 		end
-		if self.isRealistic then
-			if self.cp.turnStage < 1 then
-				lx = 0
-				lz = 1
-			end
- 			courseplay:driveInMRDirection(self, lx,lz,moveForwards,dt,allowedToDrive)
-		else
-			AIVehicleUtil.driveInDirection(self, dt, 25, 1, 0.5, 20, true, moveForwards, lx, lz, refSpeed, 1);
-		end
+		AIVehicleUtil.driveInDirection(self, dt, 25, 1, 0.5, 20, true, moveForwards, lx, lz, refSpeed, 1);
 		courseplay:setTrafficCollision(self, lx, lz, true)
 	end;
 	
@@ -313,16 +301,7 @@ function courseplay:lowerImplements(self, moveDown, workToolonOff)
 	
 	end;
 	if not specialTool then
-		if (self.cp.isCombine or self.cp.isChopper) and not self.cp.hasSpecializationFruitPreparer  then
-			for cutter, implement in pairs(self.attachedCutters) do
-				if cutter:isLowered() ~= moveDown then
-					self:lowerImplementByJointIndex(implement.jointDescIndex, moveDown, true);
-				end;
-			end;
-		elseif self.setAIImplementsMoveDown ~= nil then
-			if self:isLowered() == moveDown then 	--TODO (Tom) temp solution for potatoe and sugar beet harvesters 
-				return								--still not nice because on every turn we have a startup event while lowering
-			end
+		if self.setAIImplementsMoveDown ~= nil then
 			self:setAIImplementsMoveDown(moveDown,true);
 		elseif self.setFoldState ~= nil then
 			self:setFoldState(state, true);

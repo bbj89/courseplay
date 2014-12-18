@@ -9,19 +9,19 @@ end;
 --Table concatenation: http://stackoverflow.com/a/1413919
 -- return a new array containing the concatenation of all of its parameters. Scaler parameters are included in place, and array parameters have their values shallow-copied to the final array. Note that userdata and function values are treated as scalar.
 function tableConcat(...) 
-	local t = {}
-	for n = 1,select("#",...) do
-		local arg = select(n,...)
-		if type(arg)=="table" then
+	local t = {};
+	for n = 1, select('#', ...) do
+		local arg = select(n, ...);
+		if type(arg) == 'table' then
 			for _,v in ipairs(arg) do
-				t[#t+1] = v
-			end
+				t[#t+1] = v;
+			end;
 		else
-			t[#t+1] = arg
-		end
-	end
+			t[#t+1] = arg;
+		end;
+	end;
 	return t;
-end
+end;
 
 function courseplay:isFolding(workTool) --returns isFolding, isFolded, isUnfolded
 	if not courseplay:isFoldable(workTool) then
@@ -906,21 +906,6 @@ function courseplay:getObjectName(object, xmlFile)
 	end;
 
 	return courseplay:loc('UNKNOWN') .. '_' .. tostring(object.rootNode);
-end;
-
-function courseplay:getMoreRealisticVersion()
-	if not courseplay.moreRealisticInstalled then
-		return nil;
-	end;
-
-	local modItem = ModsUtil.findModItemByModName(RealisticUtils.modName);
-	if modItem and modItem.version then
-		local versionSplit = table.map(Utils.splitString('.', modItem.version), tonumber);
-		versionSplit[3] = versionSplit[3] or 0;
-		return tonumber(('%d.%02d%02d'):format(versionSplit[1], versionSplit[2], versionSplit[3]));
-	end;
-
-	return 0;
 end;
 
 function courseplay:getRealWorldRotation(node, direction)

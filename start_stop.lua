@@ -18,19 +18,6 @@ function courseplay:start(self)
 		self.cp.orgRpm[2] = self.motor.maxRpm
 		self.cp.orgRpm[3] = self.motor.maxRpm
 	end
-	--[[if self.ESLimiter ~= nil and self.ESLimiter.maxRPM[5] ~= nil then
-		self.cp.ESL = {}
-		self.cp.ESL[1] = self.ESLimiter.percentage[2]
-		self.cp.ESL[2] = self.ESLimiter.percentage[3]
-		self.cp.ESL[3] = self.ESLimiter.percentage[4]
-	end;
-	if self.isRealistic then
-		self.cp.mrOrigSpeed = {
-			[1] = self.motor.realSpeedLevelsAI[1],
-			[2] = self.motor.realSpeedLevelsAI[2],
-			[3] = self.motor.realSpeedLevelsAI[3]
-		};
-	end;]]
 
 	self.CPnumCollidingVehicles = 0;
 	self.cp.collidingVehicleId = nil
@@ -295,6 +282,7 @@ function courseplay:start(self)
 	elseif self.cp.startAtPoint == courseplay.START_AT_FIRST_POINT then
 		if self.cp.mode == 2 or self.cp.mode == 3 then
 			courseplay:setRecordNumber(self, 3);
+			courseplay:setIsLoaded(self, true);
 		else
 			courseplay:setRecordNumber(self, 1);
 		end
@@ -401,11 +389,6 @@ function courseplay:getCanUseCpMode(vehicle)
 				courseplay:setInfoText(vehicle, courseplay:loc('COURSEPLAY_WRONG_TRAILER'));
 				return false;
 			end;
-		elseif mode == 7 then
-			if vehicle.isAutoCombineActivated ~= nil and vehicle.isAutoCombineActivated then
-				courseplay:setInfoText(vehicle, courseplay:loc('COURSEPLAY_NO_AUTOCOMBINE_MODE_7'));
-				return false;
-			end;
 		elseif mode == 8 then
 			if vehicle.cp.workTools[1] == nil then
 				courseplay:setInfoText(vehicle, courseplay:loc('COURSEPLAY_WRONG_TRAILER'));
@@ -492,13 +475,6 @@ function courseplay:stop(self)
 	self.cp.aiFrontMarker = nil
 	self.cp.aiTurnNoBackward = false
 	self.cp.noStopOnEdge = false
-	if self.isRealistic then
-		self.motor.speedLevel = 0 
-		self:realSetAwdActive(self.cp.realAWDModeOnBackup)
-		if self.realForceAiDriven then
-			self.realForceAiDriven = false
-		end
-	end
 	self.cp.fillTrigger = nil;
 	self.cp.hasMachineToFill = false;
 	self.cp.unloadOrder = false
@@ -507,9 +483,12 @@ function courseplay:stop(self)
 	self.cp.foundColli = {}
 	self.cp.inTraffic = false
 	self.cp.bypassWaypointsSet = false
-	--deactivate beacon lights
+	-- deactivate beacon and hazard lights
 	if self.beaconLightsActive then
 		self:setBeaconLightsVisibility(false);
+	end;
+	if self.turnSignalState and self.turnSignalState ~= Vehicle.TURNSIGNAL_OFF then
+		self:setTurnSignalState(Vehicle.TURNSIGNAL_OFF);
 	end;
 
 	--open all covers

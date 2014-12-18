@@ -79,7 +79,8 @@ local function initialize()
 		'start_stop', 
 		'tippers', 
 		'triggers', 
-		'turn'
+		'turn',
+		'vehicles'
 	};
 
 	local numFiles, numFilesLoaded = #(fileList) + 3, 3; -- + 3 as 'register.lua', 'courseplay.lua' and 'CpManager.lua' have already been loaded
@@ -139,16 +140,24 @@ local function setGlobalData()
 	courseplay.START_AT_FIRST_POINT = 2;
 	courseplay.START_AT_CURRENT_POINT = 3;
 
+	-- warning lights options
+	courseplay.WARNING_LIGHTS_NEVER = 0;
+	courseplay.WARNING_LIGHTS_BEACON_ON_STREET = 1;
+	courseplay.WARNING_LIGHTS_BEACON_HAZARD_ON_STREET = 2;
+	courseplay.WARNING_LIGHTS_BEACON_ALWAYS = 3;
+
 	local langNumData = {
 		br = { '.', ',' },
+		cs = { ',', '.' },
 		cz = { ' ', ',' },
-		de = { '.', ',' },
+		de = { "'", ',' },
 		en = { ',', '.' },
 		es = { '.', ',' },
 		fr = { ' ', ',' },
 		it = { '.', ',' },
 		jp = { ',', '.' },
 		pl = { ' ', ',' },
+		pt = { '.', ',' },
 		ru = { ' ', ',' }
 	};
 	courseplay.numberSeparator = '\'';

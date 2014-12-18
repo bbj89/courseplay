@@ -1,3 +1,4 @@
+local max = math.max;
 -- handles "mode1" : waiting at start until tippers full - driving course and unloading on trigger
 function courseplay:handle_mode1(vehicle, allowedToDrive)
 	-- done tipping
@@ -26,7 +27,7 @@ function courseplay:handle_mode1(vehicle, allowedToDrive)
 		if trigger_id ~= nil then
 			local trigger_x, trigger_y, trigger_z = getWorldTranslation(trigger_id)
 			local ctx, cty, ctz = getWorldTranslation(vehicle.cp.DirectionNode);
-			local distance_to_trigger = courseplay:distance(ctx, ctz, trigger_x, trigger_z);
+			local distToTrigger = courseplay:distance(ctx, ctz, trigger_x, trigger_z);
 
 			-- Start reversing value is to check if we have started to reverse
 			-- This is used in case we already registered a tipTrigger but changed the direction and might not be in that tipTrigger when unloading. (Bug Fix)
@@ -34,16 +35,13 @@ function courseplay:handle_mode1(vehicle, allowedToDrive)
 			if startReversing then
 				courseplay:debug(string.format("%s: Is starting to reverse. Tip trigger is reset.", nameNum(vehicle)), 13);
 			end;
-
-			local extraLength = 5;
-			if t.bunkerSilo ~= nil and t.bunkerSilo.movingPlanes ~= nil and vehicle.cp.handleAsOneSilo ~= true then
-				-- We are a bunkerSilo, so we need to add more extraLength to the totalLength.
-				extraLength = 55;
-			end;
-
-			if distance_to_trigger > (vehicle.cp.totalLength + extraLength) or startReversing then
+			
+			local isBGA = t.bunkerSilo ~= nil and t.bunkerSilo.movingPlanes ~= nil
+			local triggerLength = Utils.getNoNil(vehicle.cp.currentTipTrigger.cpActualLength,20)
+			local maxDist = isBGA and (vehicle.cp.totalLength + 55) or (vehicle.cp.totalLength + triggerLength); 
+			if distToTrigger > maxDist or startReversing then --it's a backup, so we don't need to care about +/-10m
 				courseplay:resetTipTrigger(vehicle);
-				courseplay:debug(string.format("%s: distance to currentTipTrigger = %d (> %d or start reversing) --> currentTipTrigger = nil", nameNum(vehicle), distance_to_trigger, (vehicle.cp.totalLength + 5)), 1);
+				courseplay:debug(string.format("%s: distance to currentTipTrigger = %d (> %d or start reversing) --> currentTipTrigger = nil", nameNum(vehicle), distToTrigger, maxDist), 1);
 			end
 		else
 			courseplay:resetTipTrigger(vehicle);
